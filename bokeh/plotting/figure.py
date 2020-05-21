@@ -1418,6 +1418,10 @@ Examples:
 
         '''
         result = []
+        if 'line_width' in kw:
+            line_width = kw['line_width']
+            kw.pop('line_width')
+            result.append(self.vline_stack(stackers=stackers, line_width=line_width, **kw))
         for kw in double_stack(stackers, "y1", "y2", **kw):
             result.append(self.varea(**kw))
         return result
