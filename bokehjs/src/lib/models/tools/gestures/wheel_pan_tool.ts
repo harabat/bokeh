@@ -3,6 +3,7 @@ import * as p from "core/properties"
 import {ScrollEvent} from "core/ui_events"
 import {Dimension} from "core/enums"
 import {bk_tool_icon_wheel_pan} from "styles/icons"
+import {update_ranges} from "./pan_tool"
 
 export class WheelPanToolView extends GestureToolView {
   model: WheelPanTool
@@ -54,21 +55,9 @@ export class WheelPanToolView extends GestureToolView {
         throw new Error("this shouldn't have happened")
     }
 
-    const {xscales, yscales} = frame
-
-    const xrs: {[key: string]: {start: number, end: number}} = {}
-    for (const name in xscales) {
-      const scale = xscales[name]
-      const [start, end] = scale.r_invert(sx0, sx1)
-      xrs[name] = {start, end}
-    }
-
-    const yrs: {[key: string]: {start: number, end: number}} = {}
-    for (const name in yscales) {
-      const scale = yscales[name]
-      const [start, end] = scale.r_invert(sy0, sy1)
-      yrs[name] = {start, end}
-    }
+    const {x_scales, y_scales} = frame
+    const xrs = update_ranges(x_scales, sx0, sx1)
+    const yrs = update_ranges(y_scales, sy0, sy1)
 
     // OK this sucks we can't set factor independently in each direction. It is used
     // for GMap plots, and GMap plots always preserve aspect, so effective the value

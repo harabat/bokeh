@@ -891,7 +891,7 @@ class CustomJSHover(Model):
                 var projections = Bokeh.require("core/util/projections");
                 var x = special_vars.x
                 var y = special_vars.y
-                var coords = projections.wgs84_mercator.inverse([x, y])
+                var coords = projections.wgs84_mercator.invert(x, y)
                 return "" + coords[1]
             """)
 
@@ -994,8 +994,6 @@ class HoverTool(Inspection):
             * annulus
             * arc
             * bezier
-            * image
-            * image_rgba
             * image_url
             * oval
             * patch
@@ -1221,7 +1219,7 @@ class EditTool(Gesture):
     A custom tooltip label to override the default name.
     """)
 
-    empty_value = Either(Bool, Int, Float, Date, Datetime, Color, help="""
+    empty_value = Either(Bool, Int, Float, Date, Datetime, Color, String, help="""
     Defines the value to insert on non-coordinate columns when a new
     glyph is inserted into the ``ColumnDataSource`` columns, e.g. when a
     circle glyph defines 'x', 'y' and 'color' columns, adding a new

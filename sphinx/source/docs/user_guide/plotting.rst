@@ -9,7 +9,7 @@ Creating Figures
 ----------------
 
 Note that Bokeh plots created using the |bokeh.plotting| interface come with
-a default set of tools, and default visual styles. See :ref:`userguide_styling`
+a default set of tools and default visual styles. See :ref:`userguide_styling`
 for information about how to customize the visual style of plots, and
 :ref:`userguide_tools` for information about changing or specifying tools.
 
@@ -75,7 +75,7 @@ Single Lines
 ''''''''''''
 
 Below is an example that shows how to generate a single line glyph from
-one dimensional sequences of *x* and *y* points using the |line| glyph
+one-dimensional sequences of *x* and *y* points using the |line| glyph
 method:
 
 .. bokeh-plot:: docs/user_guide/examples/plotting_line_single.py
@@ -104,13 +104,13 @@ accomplished with the |multi_line| glyph method:
     :source-position: above
 
 .. note::
-    This glyph is unlike most other glyphs. Instead of accepting a one
-    dimensional list or array of scalar values, it accepts a "list of lists"
+    This glyph is unlike most other glyphs. Instead of accepting a
+    one-dimensional list or array of scalar values, it accepts a "list of lists"
     for x and y positions of each line, parameters xs and ys. multi_line
     also expects a scalar value or a list of scalers per each line for
     parameters such as color, alpha, linewidth, etc. Similarly, a
     ColumnDataSource may be used consisting of a "list of lists" and a
-    lists of scalars where the length of the list of scalars and length of
+    list of scalars where the length of the list of scalars and length of
     lists must match.
 
 Missing Points
@@ -143,7 +143,7 @@ Bars and Rectangles
 Bars
 ''''
 
-When drawing rectangular bars (often representing intervals) it is often
+When drawing rectangular bars (often representing intervals), it is often
 more convenient to have coordinates that are a hybrid of the two systems
 above. Bokeh provides the |hbar| and |vbar| glyphs function for this
 purpose.
@@ -164,7 +164,7 @@ Stacked Bars
 ''''''''''''
 
 It is often desirable to stack bars. This can be accomplished with the
-|vbar_stack| and |hbar_stack| convenience methods. Note the these methods
+|vbar_stack| and |hbar_stack| convenience methods. Note that these methods
 stack columns from an explicitly supplied ``ColumnDataSource`` (see the section
 :ref:`userguide_data` for more information).
 
@@ -195,7 +195,7 @@ Hex Tiles
 ~~~~~~~~~
 
 Bokeh can plot hexagonal tiles, which are often used for showing binned
-aggregations. The :func:`~bokeh.plotting.figure.Figure.hex_tile` method
+aggregations. The :func:`~bokeh.plotting.Figure.hex_tile` method
 takes a `size` parameter to define the size of the hex grid, and
 `axial coordinates`_ to specify which tiles are present.
 
@@ -208,7 +208,7 @@ A more realistic example below computes counts per bin using the
 .. bokeh-plot:: docs/user_guide/examples/plotting_hex_tile_binning.py
     :source-position: above
 
-The above code can be made even simpler by calling the :func:`~bokeh.plotting.figure.Figure.hexbin`
+The above code can be made even simpler by calling the :func:`~bokeh.plotting.Figure.hexbin`
 method of ``Figure``.
 
 .. _userguide_plotting_directed_areas:
@@ -234,9 +234,9 @@ Stacked Areas
 '''''''''''''
 
 It is often desirable to stack directed areas. This can be accomplished with
-the |varea_stack| and |harea_stack| convenience methods. Note the these methods
+the |varea_stack| and |harea_stack| convenience methods. Note that these methods
 stack columns from an explicitly supplied ``ColumnDataSource`` (see the section
-:ref:`userguide_data` for more information.
+:ref:`userguide_data` for more information).
 
 .. bokeh-plot:: docs/user_guide/examples/plotting_varea_stack.py
     :source-position: above
@@ -250,7 +250,7 @@ Single Patches
 ''''''''''''''
 
 Below is an example that shows how to generate a single polygonal patch
-glyph from one dimensional sequences of *x* and *y* points using the
+glyph from one-dimensional sequences of *x* and *y* points using the
 |patch| glyph method:
 
 .. bokeh-plot:: docs/user_guide/examples/plotting_patch_single.py
@@ -266,13 +266,13 @@ This can be accomplished with the |patches| glyph method:
     :source-position: above
 
 .. note::
-    This glyph is unlike most other glyphs. Instead of accepting a one
-    dimensional list or array of scalar values, it accepts a "list of lists"
-    for x and y positions of each patch, parameters xs and ys. patches
-    also expects a scalar value or a list of scalers per each patch for
-    parameters such as color, alpha, linewidth, etc. Similarly, a
-    ColumnDataSource may be used consisting of a "list of lists" and a
-    lists of scalars where the length of the list of scalars and length of
+    This glyph is unlike most other glyphs. Instead of accepting a
+    one-dimensional list or array of scalar values, it accepts a "list
+    of lists" for x and y positions of each patch, parameters xs and ys.
+    patches also expects a scalar value or a list of scalers per each
+    patch for parameters such as color, alpha, linewidth, etc. Similarly,
+    a ColumnDataSource may be used consisting of a "list of lists" and a
+    list of scalars where the length of the list of scalars and length of
     lists must match.
 
 Missing Points
@@ -296,12 +296,12 @@ Polygons with Holes
 
 The |multi_polygons| glyph uses nesting to accept a variety of information
 relevant to polygons. Anything that can be rendered as a |Patches| can also be
-rendered as |multi_polygons|, but additionally |multi_polygons| can render
+rendered as |multi_polygons|, but additionally, |multi_polygons| can render
 holes inside each polygon.
 
 .. note::
-    This glyph is unlike most other glyphs. Instead of accepting a one
-    dimensional list or array of scalar values, it accepts a 3 times nested
+    This glyph is unlike most other glyphs. Instead of accepting a one-dimensional
+    list or array of scalar values, it accepts a 3 times nested
     list of x and y positions for the exterior and holes composing each
     polygon. MultiPolygons also expects a scalar value or a list of scalers
     per each item for parameters such as color, alpha, linewidth, etc.
@@ -343,31 +343,24 @@ represents a part of the MultiPolygon:
 Multiple MultiPolygons
 ''''''''''''''''''''''
 
-The top level of nesting is used to separate each MultiPolygon from the
+The top-level of nesting is used to separate each MultiPolygon from the
 others. Each MultiPolygon can be thought of as a row in the data source -
 potentially with a corresponding label or color.
 
 .. bokeh-plot:: docs/user_guide/examples/plotting_multipolygons.py
     :source-position: above
 
-.. _userguide_plotting_ovals_ellipses:
+.. _userguide_plotting_ellipses:
 
-Ovals and Ellipses
-~~~~~~~~~~~~~~~~~~
+Ellipses
+~~~~~~~~
 
-The |oval| glyph method accepts the same properties as |rect|, but renders
-oval shapes:
-
-.. bokeh-plot:: docs/user_guide/examples/plotting_ovals.py
-    :source-position: above
-
-The |ellipse| glyph accepts the same properties as |oval| and |rect| but
-renders ellipse shapes, which are different from oval ones. In particular,
-the same value for width and height will render a circle using the |ellipse|
-glyph but not the |oval| one:
+The |ellipse| glyph method accepts the same properties as |rect|, but renders
+ellipse shapes:
 
 .. bokeh-plot:: docs/user_guide/examples/plotting_ellipses.py
     :source-position: above
+
 
 .. _userguide_plotting_images:
 
@@ -376,7 +369,7 @@ Images
 
 You can display images on Bokeh plots using the |image|, |image_rgba|, and
 |image_url| glyph methods. It is possible to use a hover tool with image glyphs
-to allow for interactive inspection of the values any any pixel. For more
+to allow for interactive inspection of the values of any pixel. For more
 information on how to enable hover with images, please consult the
 :ref:`Image Hover section <userguide_tools_image_hover>` of the User's Guide.
 
@@ -403,7 +396,7 @@ method. The next example shows how to do this:
 .. bokeh-plot:: docs/user_guide/examples/plotting_image.py
     :source-position: above
 
-Also note in the above example we have set the render level to ``"image"``.
+Also note that in the above example we have set the render level to ``"image"``.
 Normally, all glyphs are drawn *above* grid lines, but setting the ``"image"``
 render level can be used to draw *underneath* the grid lines.
 
@@ -451,7 +444,7 @@ filled wedge instead:
     :source-position: above
 
 The |annular_wedge| glyph method is similar to |arc|, but draws a filled area.
-It accepts a ``inner_radius`` and ``outer_radius`` instead of just ``radius``:
+It accepts an ``inner_radius`` and ``outer_radius`` instead of just ``radius``:
 
 .. bokeh-plot:: docs/user_guide/examples/plotting_annular_wedge.py
     :source-position: above
@@ -534,7 +527,7 @@ Categorical Axes
 
 Categorical axes are created by specifying a
 :class:`~bokeh.models.ranges.FactorRange` for one of the plot ranges (or a
-lists of factors to be converted to one). Below is a simple example, for
+list of factors to be converted to one). Below is a simple example, for
 complete details see :ref:`userguide_categorical`.
 
 .. bokeh-plot:: docs/user_guide/examples/plotting_categorical_axis.py
@@ -550,7 +543,7 @@ times, it is desirable to have an axis that can display labels that
 are appropriate to different date and time scales.
 
 .. note::
-    This example requires a network connection, and depends on the
+    This example requires a network connection and depends on the
     open source Pandas library in order to more easily present realistic
     timeseries data.
 
@@ -604,64 +597,63 @@ below:
 .. _axial coordinates: https://www.redblobgames.com/grids/hexagons/#coordinates-axial
 
 .. |bokeh.plotting| replace:: :ref:`bokeh.plotting <bokeh.plotting>`
-.. |Figure| replace:: :class:`~bokeh.plotting.figure.Figure`
+.. |Figure| replace:: :class:`~bokeh.plotting.Figure`
 .. |figure| replace:: :func:`~bokeh.plotting.figure`
 .. |Plot| replace:: :class:`~bokeh.models.plots.Plot`
 
-.. |annular_wedge|     replace:: :func:`~bokeh.plotting.figure.Figure.annular_wedge`
-.. |annulus|           replace:: :func:`~bokeh.plotting.figure.Figure.annulus`
-.. |arc|               replace:: :func:`~bokeh.plotting.figure.Figure.arc`
-.. |asterisk|          replace:: :func:`~bokeh.plotting.figure.Figure.asterisk`
-.. |bezier|            replace:: :func:`~bokeh.plotting.figure.Figure.bezier`
-.. |circle|            replace:: :func:`~bokeh.plotting.figure.Figure.circle`
-.. |circle_cross|      replace:: :func:`~bokeh.plotting.figure.Figure.circle_cross`
-.. |circle_dot|        replace:: :func:`~bokeh.plotting.figure.Figure.circle_dot`
-.. |circle_x|          replace:: :func:`~bokeh.plotting.figure.Figure.circle_x`
-.. |circle_y|          replace:: :func:`~bokeh.plotting.figure.Figure.circle_y`
-.. |cross|             replace:: :func:`~bokeh.plotting.figure.Figure.cross`
-.. |dash|              replace:: :func:`~bokeh.plotting.figure.Figure.dash`
-.. |diamond|           replace:: :func:`~bokeh.plotting.figure.Figure.diamond`
-.. |diamond_cross|     replace:: :func:`~bokeh.plotting.figure.Figure.diamond_cross`
-.. |diamond_dot|       replace:: :func:`~bokeh.plotting.figure.Figure.diamond_dot`
-.. |dot|               replace:: :func:`~bokeh.plotting.figure.Figure.dot`
-.. |ellipse|           replace:: :func:`~bokeh.plotting.figure.Figure.ellipse`
-.. |harea|             replace:: :func:`~bokeh.plotting.figure.Figure.harea`
-.. |harea_stack|       replace:: :func:`~bokeh.plotting.figure.Figure.harea_stack`
-.. |hbar|              replace:: :func:`~bokeh.plotting.figure.Figure.hbar`
-.. |hbar_stack|        replace:: :func:`~bokeh.plotting.figure.Figure.hbar_stack`
-.. |hex|               replace:: :func:`~bokeh.plotting.figure.Figure.hex`
-.. |hex_dot|           replace:: :func:`~bokeh.plotting.figure.Figure.hex_dot`
-.. |hline_stack|       replace:: :func:`~bokeh.plotting.figure.Figure.hline_stack`
-.. |inverted_triangle| replace:: :func:`~bokeh.plotting.figure.Figure.inverted_triangle`
-.. |image|             replace:: :func:`~bokeh.plotting.figure.Figure.image`
-.. |image_rgba|        replace:: :func:`~bokeh.plotting.figure.Figure.image_rgba`
-.. |image_url|         replace:: :func:`~bokeh.plotting.figure.Figure.image_url`
-.. |line|              replace:: :func:`~bokeh.plotting.figure.Figure.line`
-.. |multi_line|        replace:: :func:`~bokeh.plotting.figure.Figure.multi_line`
-.. |multi_polygons|    replace:: :func:`~bokeh.plotting.figure.Figure.multi_polygons`
-.. |oval|              replace:: :func:`~bokeh.plotting.figure.Figure.oval`
-.. |patch|             replace:: :func:`~bokeh.plotting.figure.Figure.patch`
-.. |patches|           replace:: :func:`~bokeh.plotting.figure.Figure.patches`
-.. |plus|              replace:: :func:`~bokeh.plotting.figure.Figure.plus`
-.. |quad|              replace:: :func:`~bokeh.plotting.figure.Figure.quad`
-.. |quadratic|         replace:: :func:`~bokeh.plotting.figure.Figure.quadratic`
-.. |ray|               replace:: :func:`~bokeh.plotting.figure.Figure.ray`
-.. |rect|              replace:: :func:`~bokeh.plotting.figure.Figure.rect`
-.. |segment|           replace:: :func:`~bokeh.plotting.figure.Figure.segment`
-.. |step|              replace:: :func:`~bokeh.plotting.figure.Figure.step`
-.. |square|            replace:: :func:`~bokeh.plotting.figure.Figure.square`
-.. |square_cross|      replace:: :func:`~bokeh.plotting.figure.Figure.square_cross`
-.. |square_dot|        replace:: :func:`~bokeh.plotting.figure.Figure.square_dot`
-.. |square_pin|        replace:: :func:`~bokeh.plotting.figure.Figure.square_pin`
-.. |square_x|          replace:: :func:`~bokeh.plotting.figure.Figure.square_x`
-.. |triangle|          replace:: :func:`~bokeh.plotting.figure.Figure.triangle`
-.. |triangle_dot|      replace:: :func:`~bokeh.plotting.figure.Figure.triangle_dot`
-.. |triangle_pin|      replace:: :func:`~bokeh.plotting.figure.Figure.triangle_pin`
-.. |varea|             replace:: :func:`~bokeh.plotting.figure.Figure.varea`
-.. |varea_stack|       replace:: :func:`~bokeh.plotting.figure.Figure.varea_stack`
-.. |vbar|              replace:: :func:`~bokeh.plotting.figure.Figure.vbar`
-.. |vbar_stack|        replace:: :func:`~bokeh.plotting.figure.Figure.vbar_stack`
-.. |vline_stack|       replace:: :func:`~bokeh.plotting.figure.Figure.vline_stack`
-.. |wedge|             replace:: :func:`~bokeh.plotting.figure.Figure.wedge`
-.. |x|                 replace:: :func:`~bokeh.plotting.figure.Figure.x`
-.. |y|                 replace:: :func:`~bokeh.plotting.figure.Figure.y`
+.. |annular_wedge|     replace:: :func:`~bokeh.plotting.Figure.annular_wedge`
+.. |annulus|           replace:: :func:`~bokeh.plotting.Figure.annulus`
+.. |arc|               replace:: :func:`~bokeh.plotting.Figure.arc`
+.. |asterisk|          replace:: :func:`~bokeh.plotting.Figure.asterisk`
+.. |bezier|            replace:: :func:`~bokeh.plotting.Figure.bezier`
+.. |circle|            replace:: :func:`~bokeh.plotting.Figure.circle`
+.. |circle_cross|      replace:: :func:`~bokeh.plotting.Figure.circle_cross`
+.. |circle_dot|        replace:: :func:`~bokeh.plotting.Figure.circle_dot`
+.. |circle_x|          replace:: :func:`~bokeh.plotting.Figure.circle_x`
+.. |circle_y|          replace:: :func:`~bokeh.plotting.Figure.circle_y`
+.. |cross|             replace:: :func:`~bokeh.plotting.Figure.cross`
+.. |dash|              replace:: :func:`~bokeh.plotting.Figure.dash`
+.. |diamond|           replace:: :func:`~bokeh.plotting.Figure.diamond`
+.. |diamond_cross|     replace:: :func:`~bokeh.plotting.Figure.diamond_cross`
+.. |diamond_dot|       replace:: :func:`~bokeh.plotting.Figure.diamond_dot`
+.. |dot|               replace:: :func:`~bokeh.plotting.Figure.dot`
+.. |ellipse|           replace:: :func:`~bokeh.plotting.Figure.ellipse`
+.. |harea|             replace:: :func:`~bokeh.plotting.Figure.harea`
+.. |harea_stack|       replace:: :func:`~bokeh.plotting.Figure.harea_stack`
+.. |hbar|              replace:: :func:`~bokeh.plotting.Figure.hbar`
+.. |hbar_stack|        replace:: :func:`~bokeh.plotting.Figure.hbar_stack`
+.. |hex|               replace:: :func:`~bokeh.plotting.Figure.hex`
+.. |hex_dot|           replace:: :func:`~bokeh.plotting.Figure.hex_dot`
+.. |hline_stack|       replace:: :func:`~bokeh.plotting.Figure.hline_stack`
+.. |inverted_triangle| replace:: :func:`~bokeh.plotting.Figure.inverted_triangle`
+.. |image|             replace:: :func:`~bokeh.plotting.Figure.image`
+.. |image_rgba|        replace:: :func:`~bokeh.plotting.Figure.image_rgba`
+.. |image_url|         replace:: :func:`~bokeh.plotting.Figure.image_url`
+.. |line|              replace:: :func:`~bokeh.plotting.Figure.line`
+.. |multi_line|        replace:: :func:`~bokeh.plotting.Figure.multi_line`
+.. |multi_polygons|    replace:: :func:`~bokeh.plotting.Figure.multi_polygons`
+.. |patch|             replace:: :func:`~bokeh.plotting.Figure.patch`
+.. |patches|           replace:: :func:`~bokeh.plotting.Figure.patches`
+.. |plus|              replace:: :func:`~bokeh.plotting.Figure.plus`
+.. |quad|              replace:: :func:`~bokeh.plotting.Figure.quad`
+.. |quadratic|         replace:: :func:`~bokeh.plotting.Figure.quadratic`
+.. |ray|               replace:: :func:`~bokeh.plotting.Figure.ray`
+.. |rect|              replace:: :func:`~bokeh.plotting.Figure.rect`
+.. |segment|           replace:: :func:`~bokeh.plotting.Figure.segment`
+.. |step|              replace:: :func:`~bokeh.plotting.Figure.step`
+.. |square|            replace:: :func:`~bokeh.plotting.Figure.square`
+.. |square_cross|      replace:: :func:`~bokeh.plotting.Figure.square_cross`
+.. |square_dot|        replace:: :func:`~bokeh.plotting.Figure.square_dot`
+.. |square_pin|        replace:: :func:`~bokeh.plotting.Figure.square_pin`
+.. |square_x|          replace:: :func:`~bokeh.plotting.Figure.square_x`
+.. |triangle|          replace:: :func:`~bokeh.plotting.Figure.triangle`
+.. |triangle_dot|      replace:: :func:`~bokeh.plotting.Figure.triangle_dot`
+.. |triangle_pin|      replace:: :func:`~bokeh.plotting.Figure.triangle_pin`
+.. |varea|             replace:: :func:`~bokeh.plotting.Figure.varea`
+.. |varea_stack|       replace:: :func:`~bokeh.plotting.Figure.varea_stack`
+.. |vbar|              replace:: :func:`~bokeh.plotting.Figure.vbar`
+.. |vbar_stack|        replace:: :func:`~bokeh.plotting.Figure.vbar_stack`
+.. |vline_stack|       replace:: :func:`~bokeh.plotting.Figure.vline_stack`
+.. |wedge|             replace:: :func:`~bokeh.plotting.Figure.wedge`
+.. |x|                 replace:: :func:`~bokeh.plotting.Figure.x`
+.. |y|                 replace:: :func:`~bokeh.plotting.Figure.y`

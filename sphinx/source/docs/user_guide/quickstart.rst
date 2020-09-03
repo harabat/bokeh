@@ -50,7 +50,7 @@ NumPy, you may instead use ``pip`` at the command line:
     The ``pip`` method does not install the examples. Clone the Git repository
     and look in the ``examples/`` directory of the checkout to see examples.
 
-.. _userguide_quickstart_gettng_started:
+.. _userguide_quickstart_getting_started:
 
 Getting Started
 ===============
@@ -61,8 +61,8 @@ detailed information please consult the full :ref:`userguide`.
 
 Let's begin with some examples.
 
-Plotting data in basic Python lists as a line plot including zoom,
-pan, save, and other tools is simple and straightforward:
+Plotting data in basic Python lists as a line plot, including zoom,
+pan, save, and other tools, is simple and straightforward:
 
 .. bokeh-plot::
     :source-position: above
@@ -86,18 +86,18 @@ pan, save, and other tools is simple and straightforward:
     show(p)
 
 When you execute this script, you will see that a new output file
-``"lines.html"`` is created, and that a browser automatically opens a new tab
-to display it. (For presentation purposes we have included the plot output
-directly inline in this document.)
+``"lines.html"`` is created and that a browser automatically opens a new tab
+to display it (for presentation purposes we have included the plot output
+directly inline in this document).
 
 The basic steps to creating plots with the |bokeh.plotting| interface are:
 
 Prepare some data
-    In this case plain Python lists, but NumPy arrays or Pandas series also
+    In this case, plain Python lists, but NumPy arrays or Pandas series also
     work.
 
 Tell Bokeh where to generate output
-    In this case using |output_file|, with the filename ``"lines.html"``.
+    In this case, using |output_file|, with the filename ``"lines.html"``.
     Another option is |output_notebook| for use in Jupyter notebooks.
 
 Call |figure|
@@ -106,7 +106,7 @@ Call |figure|
 
 Add renderers
     In this case, we use |Figure.line| for our data, specifying visual
-    customizations like colors, legends and widths.
+    customizations like colors, legends, and widths.
 
 Ask Bokeh to |show| or |save| the results
     These functions save the plot to an HTML file and optionally display it in
@@ -117,7 +117,7 @@ some of the examples below.
 
 The |bokeh.plotting| interface is also quite handy if we need to customize
 the output a bit more by adding more data series, glyphs, logarithmic axis,
-and so on. It's easy to combine multiple glyphs together on one plot as shown
+and so on. It's easy to combine multiple glyphs together on one plot, as shown
 below:
 
 .. bokeh-plot::
@@ -175,7 +175,7 @@ The `Bokeh GitHub repository`_ also has a number of example notebooks in the
 
     jupyter notebook
 
-You can open and interact with any of the notebooks listed in the index page
+You can open and interact with any of the notebooks listed on the index page
 that automatically opens up. In particular, you might check out these examples,
 which show how Bokeh can be used together with Jupyter interactive widgets:
 
@@ -275,7 +275,7 @@ load BokehJS from ``cdn.bokeh.org``. However, you can also configure Bokeh
 to generate static HTML files with BokehJS resources embedded directly inside,
 by passing the argument ``mode="inline"`` to the |output_file| function.
 
-More examples
+More Examples
 =============
 
 Here are a few more examples to demonstrate other common tasks and use cases
@@ -283,7 +283,7 @@ with the |bokeh.plotting| interface.
 
 .. _userguide_quickstart_vectorized:
 
-Vectorized colors and sizes
+Vectorized Colors and Sizes
 ---------------------------
 
 This example shows how it is possible to provide sequences of data values for
@@ -328,7 +328,7 @@ for in this example:
 
 .. _userguide_quickstart_linked:
 
-Linked panning and brushing
+Linked Panning and Brushing
 ---------------------------
 
 Linking together various aspects of different plots can be a useful technique
@@ -433,14 +433,14 @@ plot.
 
 .. _userguide_quickstart_datetime:
 
-Datetime axes
+Datetime Axes
 -------------
 
 Dealing with date and time series is another common task. Bokeh has a
 sophisticated |DatetimeAxis| that can change the displayed ticks based
 on the current scale of the plot. There are some inputs for which Bokeh
 will automatically default to |DatetimeAxis|, but you can always
-explicitly ask for one by passing the value ``"datetime"`` to  the
+explicitly ask for one by passing the value ``"datetime"`` to the
 ``x_axis_type`` or ``y_axis_type`` parameters to |figure|. A few things
 of interest to look out for in this example:
 
@@ -535,10 +535,10 @@ and apps, consult the :ref:`userguide_server` section of the
 
 .. _userguide_quickstart_next:
 
-What's next?
+What's Next?
 ============
 
-This Quickstart barely scratches the surface of Bokeh capability.
+This Quickstart barely scratches the surface of Bokeh's capabilities.
 
 For more information about the different plotting APIs Bokeh offers,
 using the Bokeh server, and how to embed Bokeh plots in your own apps and
@@ -573,16 +573,16 @@ Be sure to follow us on Twitter `@bokeh <Twitter_>`_!
 .. |glyphs|  replace:: :ref:`glyphs <bokeh.models.glyphs>`
 .. |markers| replace:: :ref:`markers <bokeh.models.markers>`
 
-.. |figure| replace:: :func:`~bokeh.plotting.figure.figure`
-.. |Figure| replace:: :class:`~bokeh.plotting.figure.Figure`
+.. |figure| replace:: :func:`~bokeh.plotting.figure`
+.. |Figure| replace:: :class:`~bokeh.plotting.Figure`
 
-.. |legend| replace:: :class:`~bokeh.plotting.figure.Figure.legend`
-.. |grid|   replace:: :class:`~bokeh.plotting.figure.Figure.grid`
-.. |xgrid|  replace:: :class:`~bokeh.plotting.figure.Figure.xgrid`
-.. |ygrid|  replace:: :class:`~bokeh.plotting.figure.Figure.ygrid`
-.. |axis|   replace:: :class:`~bokeh.plotting.figure.Figure.axis`
-.. |xaxis|  replace:: :class:`~bokeh.plotting.figure.Figure.xaxis`
-.. |yaxis|  replace:: :class:`~bokeh.plotting.figure.Figure.yaxis`
+.. |legend| replace:: :class:`~bokeh.plotting.Figure.legend`
+.. |grid|   replace:: :class:`~bokeh.plotting.Figure.grid`
+.. |xgrid|  replace:: :class:`~bokeh.plotting.Figure.xgrid`
+.. |ygrid|  replace:: :class:`~bokeh.plotting.Figure.ygrid`
+.. |axis|   replace:: :class:`~bokeh.plotting.Figure.axis`
+.. |xaxis|  replace:: :class:`~bokeh.plotting.Figure.xaxis`
+.. |yaxis|  replace:: :class:`~bokeh.plotting.Figure.yaxis`
 
 .. |output_file|     replace:: :func:`~bokeh.io.output_file`
 .. |output_notebook| replace:: :func:`~bokeh.io.output_notebook`
@@ -593,10 +593,10 @@ Be sure to follow us on Twitter `@bokeh <Twitter_>`_!
 .. |DatetimeAxis|     replace:: :class:`~bokeh.models.axes.DatetimeAxis`
 .. |Line|             replace:: :class:`~bokeh.models.glyphs.Line`
 
-.. |Figure.circle|   replace:: :func:`~bokeh.plotting.figure.Figure.circle`
-.. |Figure.line|     replace:: :func:`~bokeh.plotting.figure.Figure.line`
-.. |Figure.square|   replace:: :func:`~bokeh.plotting.figure.Figure.square`
-.. |Figure.triangle| replace:: :func:`~bokeh.plotting.figure.Figure.triangle`
+.. |Figure.circle|   replace:: :func:`~bokeh.plotting.Figure.circle`
+.. |Figure.line|     replace:: :func:`~bokeh.plotting.Figure.line`
+.. |Figure.square|   replace:: :func:`~bokeh.plotting.Figure.square`
+.. |Figure.triangle| replace:: :func:`~bokeh.plotting.Figure.triangle`
 
 .. |gridplot| replace:: :func:`~bokeh.layouts.gridplot`
 

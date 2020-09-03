@@ -1,13 +1,13 @@
 import {Model} from "../../model"
 import * as p from "core/properties"
 import {SelectionMode} from "core/enums"
-import {union, intersection, difference, sort_by} from "core/util/array"
+import {union, intersection, difference} from "core/util/array"
 import {merge} from "core/util/object"
 import {Glyph, GlyphView} from "../glyphs/glyph"
 
-export type Indices = number[]
+export type OpaqueIndices = number[]
 
-export type MultiIndices = {[key: string]: Indices}
+export type MultiIndices = {[key: string]: OpaqueIndices}
 
 export type ImageIndex = {
   index: number
@@ -20,10 +20,10 @@ export namespace Selection {
   export type Attrs = p.AttrsOf<Props>
 
   export type Props = Model.Props & {
-    indices: p.Property<Indices>
-    line_indices: p.Property<Indices>
+    indices: p.Property<OpaqueIndices>
+    line_indices: p.Property<OpaqueIndices>
     selected_glyphs: p.Property<Glyph[]>
-    get_view: p.Property<() => GlyphView | null>
+    view: p.Property<GlyphView | null>
     multiline_indices: p.Property<MultiIndices>
     image_indices: p.Property<ImageIndex[]>
   }
@@ -38,6 +38,10 @@ export class Selection extends Model {
     super(attrs)
   }
 
+  get_view(): GlyphView | null {
+    return this.view
+  }
+
   static init_Selection(): void {
     this.define<Selection.Props>({
       indices:           [ p.Array,   [] ],
@@ -47,19 +51,13 @@ export class Selection extends Model {
 
     this.internal({
       selected_glyphs:   [ p.Array,   [] ],
-      get_view:          [ p.Any         ],
+      view:              [ p.Any         ],
       image_indices:     [ p.Array,   [] ], // Used internally to support hover tool for now. Python API TBD
     })
   }
 
   initialize(): void {
     super.initialize()
-    this.get_view = () => null
-  }
-
-  static from_hits(hits: [number, number][]): Selection {
-    const indices = sort_by(hits, ([, dist]) => dist).map(([i]) => i)
-    return new Selection({indices})
   }
 
   get selected_glyph(): Glyph | null {
@@ -76,7 +74,7 @@ export class Selection extends Model {
         this.indices = selection.indices
         this.line_indices = selection.line_indices
         this.selected_glyphs = selection.selected_glyphs
-        this.get_view = selection.get_view
+        this.view = selection.view
         this.multiline_indices = selection.multiline_indices
         this.image_indices = selection.image_indices
         break
@@ -100,7 +98,7 @@ export class Selection extends Model {
     this.indices = []
     this.line_indices = []
     this.multiline_indices = {}
-    this.get_view = () => null
+    this.view = null
     this.selected_glyphs = []
   }
 
@@ -112,8 +110,7 @@ export class Selection extends Model {
     this.indices = union(this.indices, other.indices)
     this.selected_glyphs = union(other.selected_glyphs, this.selected_glyphs)
     this.line_indices = union(other.line_indices, this.line_indices)
-    if(!this.get_view())
-      this.get_view = other.get_view
+    this.view = other.view
     this.multiline_indices = merge(other.multiline_indices, this.multiline_indices)
   }
 
@@ -122,8 +119,7 @@ export class Selection extends Model {
     // TODO: think through and fix any logic below
     this.selected_glyphs = union(other.selected_glyphs, this.selected_glyphs)
     this.line_indices = union(other.line_indices, this.line_indices)
-    if(!this.get_view())
-      this.get_view = other.get_view
+    this.view = other.view
     this.multiline_indices = merge(other.multiline_indices, this.multiline_indices)
   }
 
@@ -132,8 +128,7 @@ export class Selection extends Model {
     // TODO: think through and fix any logic below
     this.selected_glyphs = union(other.selected_glyphs, this.selected_glyphs)
     this.line_indices = union(other.line_indices, this.line_indices)
-    if(!this.get_view())
-      this.get_view = other.get_view
+    this.view = other.view
     this.multiline_indices = merge(other.multiline_indices, this.multiline_indices)
   }
 }

@@ -39,7 +39,11 @@ from ..core.properties import (
     Tuple,
 )
 from ..core.validation import error, warning
-from ..core.validation.errors import MIN_PREFERRED_MAX_HEIGHT, MIN_PREFERRED_MAX_WIDTH
+from ..core.validation.errors import (
+    MIN_PREFERRED_MAX_HEIGHT,
+    MIN_PREFERRED_MAX_WIDTH,
+    REPEATED_LAYOUT_CHILD,
+)
 from ..core.validation.warnings import (
     BOTH_CHILD_AND_ROOT,
     EMPTY_LAYOUT,
@@ -107,11 +111,11 @@ class LayoutDOM(Model):
     """)
 
     max_width = NonNegativeInt(default=None, help="""
-    Minimal width of the component (in pixels) if width is adjustable.
+    Maximal width of the component (in pixels) if width is adjustable.
     """)
 
     max_height = NonNegativeInt(default=None, help="""
-    Minimal height of the component (in pixels) if height is adjustable.
+    Maximal height of the component (in pixels) if height is adjustable.
     """)
 
     margin = Tuple(Int, Int, Int, Int, default=(0, 0, 0, 0), help="""
@@ -355,6 +359,12 @@ class GridBox(LayoutDOM):
     respectively.
     """)
 
+    @error(REPEATED_LAYOUT_CHILD)
+    def _check_repeated_layout_children(self):
+        children = [ child[0] for child in self.children ]
+        if len(children) != len(set(children)):
+            return str(self)
+
 @abstract
 class Box(LayoutDOM):
     ''' Abstract base class for Row and Column. Do not use directly.
@@ -386,6 +396,11 @@ class Box(LayoutDOM):
             return ", ".join(problems)
         else:
             return None
+
+    @error(REPEATED_LAYOUT_CHILD)
+    def _check_repeated_layout_children(self):
+        if len(self.children) != len(set(self.children)):
+            return str(self)
 
     children = List(Instance(LayoutDOM), help="""
     The list of children, which can be other components including plots, rows, columns, and widgets.

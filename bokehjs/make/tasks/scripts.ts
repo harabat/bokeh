@@ -1,7 +1,7 @@
 import {join, relative} from "path"
 import {argv} from "yargs"
 
-import {task, log} from "../task"
+import {task, passthrough} from "../task"
 import {rename, read, write, scan} from "@compiler/sys"
 import {compile_typescript} from "@compiler/compiler"
 import {Linker} from "@compiler/linker"
@@ -42,22 +42,18 @@ export default css;
 })
 
 task("scripts:compile", ["scripts:styles", "scripts:version"], async () => {
-  const success = compile_typescript(join(paths.src_dir.lib, "tsconfig.json"), {
-    log,
+  compile_typescript(join(paths.src_dir.lib, "tsconfig.json"), {
     out_dir: {js: paths.build_dir.lib, dts: paths.build_dir.types},
   })
-
-  if (argv.emitError && !success)
-    process.exit(1)
 })
 
 function min_js(js: string): string {
   return rename(js, {ext: '.min.js'})
 }
 
-task("scripts:bundle", ["scripts:compile"], async () => {
-  const {bokehjs, gl, api, widgets, tables} = paths.lib
-  const packages = [bokehjs, gl, api, widgets, tables]
+task("scripts:bundle", [passthrough("scripts:compile")], async () => {
+  const {bokehjs, api, widgets, tables} = paths.lib
+  const packages = [bokehjs, api, widgets, tables]
 
   const linker = new Linker({
     entries: packages.map((pkg) => pkg.main),
@@ -85,9 +81,9 @@ task("scripts:bundle", ["scripts:compile"], async () => {
   bundle(true, outputs.map(min_js))
 })
 
-task("scripts:bundle-legacy", ["scripts:compile"], async () => {
-  const {bokehjs, gl, api, widgets, tables} = paths.lib_legacy
-  const packages = [bokehjs, gl, api, widgets, tables]
+task("scripts:bundle-legacy", [passthrough("scripts:compile")], async () => {
+  const {bokehjs, api, widgets, tables} = paths.lib_legacy
+  const packages = [bokehjs, api, widgets, tables]
 
   const linker = new Linker({
     entries: packages.map((pkg) => pkg.main),

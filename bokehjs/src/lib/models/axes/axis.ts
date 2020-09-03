@@ -12,7 +12,7 @@ import {Size} from "core/layout"
 import {SidePanel, Orient} from "core/layout/side_panel"
 import {Context2d} from "core/util/canvas"
 import {sum} from "core/util/array"
-import {isString, isArray, isNumber} from "core/util/types"
+import {isString, isNumber} from "core/util/types"
 import {Factor, FactorRange} from "models/ranges/factor_range"
 
 const {abs, min, max} = Math
@@ -42,8 +42,13 @@ export class AxisView extends GuideRendererView {
     return this.layout
   }
 
-  render(): void {
-    if (!this.model.visible)
+  get is_renderable(): boolean {
+    const [range, cross_range] = this.ranges
+    return range.is_valid && cross_range.is_valid
+  }
+
+  protected _render(): void {
+    if (!this.is_renderable)
       return
 
     const extents = {
@@ -51,35 +56,28 @@ export class AxisView extends GuideRendererView {
       tick_label: this._tick_label_extents(),
       axis_label: this._axis_label_extent(),
     }
-    const tick_coords = this.tick_coords
+    const {tick_coords} = this
 
     const ctx = this.layer.ctx
     ctx.save()
-
     this._draw_rule(ctx, extents)
     this._draw_major_ticks(ctx, extents, tick_coords)
     this._draw_minor_ticks(ctx, extents, tick_coords)
     this._draw_major_labels(ctx, extents, tick_coords)
     this._draw_axis_label(ctx, extents, tick_coords)
-
-    if (this._render != null)
-      this._render(ctx, extents, tick_coords)
-
+    this._paint?.(ctx, extents, tick_coords)
     ctx.restore()
   }
 
-  protected _render?(ctx: Context2d, extents: Extents, tick_coords: TickCoords): void
+  protected _paint?(ctx: Context2d, extents: Extents, tick_coords: TickCoords): void
 
   connect_signals(): void {
     super.connect_signals()
-    this.connect(this.model.change, () => this.plot_view.request_paint())
-
-    const p = this.model.properties
-    this.on_change(p.visible, () => this.plot_view.request_layout())
+    this.connect(this.model.change, () => this.plot_view.request_layout())
   }
 
   get_size(): Size {
-    if (this.model.visible && this.model.fixed_location == null) {
+    if (this.model.visible && this.model.fixed_location == null && this.is_renderable) {
       const size = this._get_size()
       return {width: 0 /* max */, height: Math.round(size)}
     } else
@@ -101,7 +99,7 @@ export class AxisView extends GuideRendererView {
       return
 
     const [xs, ys]     = this.rule_coords
-    const [sxs, sys]   = this.plot_view.map_to_screen(xs, ys, this.model.x_range_name, this.model.y_range_name)
+    const [sxs, sys]   = this.coordinates.map_to_screen(xs, ys)
     const [nx, ny]     = this.normals
     const [xoff, yoff] = this.offsets
 
@@ -150,22 +148,23 @@ export class AxisView extends GuideRendererView {
     let sx: number
     let sy: number
 
+    const {bbox} = this.panel
     switch (this.panel.side) {
       case "above":
-        sx = this.panel._hcenter.value
-        sy = this.panel._bottom.value
+        sx = bbox.hcenter
+        sy = bbox.bottom
         break
       case "below":
-        sx = this.panel._hcenter.value
-        sy = this.panel._top.value
+        sx = bbox.hcenter
+        sy = bbox.top
         break
       case "left":
-        sx = this.panel._right.value
-        sy = this.panel._vcenter.value
+        sx = bbox.right
+        sy = bbox.vcenter
         break
       case "right":
-        sx = this.panel._left.value
-        sy = this.panel._vcenter.value
+        sx = bbox.left
+        sy = bbox.vcenter
         break
       default:
         throw new Error(`unknown side: ${this.panel.side}`)
@@ -183,7 +182,7 @@ export class AxisView extends GuideRendererView {
       return
 
     const [x, y]       = coords
-    const [sxs, sys]   = this.plot_view.map_to_screen(x, y, this.model.x_range_name, this.model.y_range_name)
+    const [sxs, sys]   = this.coordinates.map_to_screen(x, y)
     const [nx, ny]     = this.normals
     const [xoff, yoff] = this.offsets
 
@@ -192,16 +191,16 @@ export class AxisView extends GuideRendererView {
 
     visuals.set_value(ctx)
 
+    ctx.beginPath()
     for (let i = 0; i < sxs.length; i++) {
       const sx0 = Math.round(sxs[i] + nxout)
       const sy0 = Math.round(sys[i] + nyout)
       const sx1 = Math.round(sxs[i] + nxin)
       const sy1 = Math.round(sys[i] + nyin)
-      ctx.beginPath()
       ctx.moveTo(sx0, sy0)
       ctx.lineTo(sx1, sy1)
-      ctx.stroke()
     }
+    ctx.stroke()
   }
 
   protected _draw_oriented_labels(ctx: Context2d, labels: string[], coords: Coords,
@@ -218,7 +217,7 @@ export class AxisView extends GuideRendererView {
       ;[xoff, yoff] = [0, 0]
     } else {
       const [dxs, dys] = coords
-      ;[sxs, sys] = this.plot_view.map_to_screen(dxs, dys, this.model.x_range_name, this.model.y_range_name)
+      ;[sxs, sys] = this.coordinates.map_to_screen(dxs, dys)
       ;[xoff, yoff] = this.offsets
     }
 
@@ -354,16 +353,16 @@ export class AxisView extends GuideRendererView {
 
     switch (this.panel.side) {
       case "below":
-        yoff = abs(this.panel._top.value - frame._bottom.value)
+        yoff = abs(this.panel.bbox.top - frame.bbox.bottom)
         break
       case "above":
-        yoff = abs(this.panel._bottom.value - frame._top.value)
+        yoff = abs(this.panel.bbox.bottom - frame.bbox.top)
         break
       case "right":
-        xoff = abs(this.panel._left.value - frame._right.value)
+        xoff = abs(this.panel.bbox.left - frame.bbox.right)
         break
       case "left":
-        xoff = abs(this.panel._right.value - frame._left.value)
+        xoff = abs(this.panel.bbox.right - frame.bbox.left)
         break
     }
 
@@ -373,23 +372,19 @@ export class AxisView extends GuideRendererView {
   get ranges(): [Range, Range] {
     const i = this.dimension
     const j = (i + 1) % 2
-    const {frame} = this.plot_view
-    const ranges = [
-      frame.x_ranges[this.model.x_range_name],
-      frame.y_ranges[this.model.y_range_name],
-    ]
+    const {ranges} = this.coordinates
     return [ranges[i], ranges[j]]
   }
 
   get computed_bounds(): [number, number] {
     const [range] = this.ranges
 
-    const user_bounds = this.model.bounds // XXX: ? 'auto'
-    const range_bounds: [number, number] = [range.min, range.max]
+    const user_bounds = this.model.bounds
+    const range_bounds = [range.min, range.max]
 
-    if (user_bounds == 'auto')
+    if (user_bounds == "auto")
       return [range.min, range.max]
-    else if (isArray(user_bounds)) {
+    else {
       let start: number
       let end: number
 
@@ -405,8 +400,7 @@ export class AxisView extends GuideRendererView {
       }
 
       return [start, end]
-    } else
-      throw new Error(`user bounds '${user_bounds}' not understood`)
+    }
   }
 
   get rule_coords(): Coords {
@@ -511,8 +505,6 @@ export namespace Axis {
     bounds: p.Property<[number, number] | "auto">
     ticker: p.Property<Ticker<any>> // TODO
     formatter: p.Property<TickFormatter>
-    x_range_name: p.Property<string>
-    y_range_name: p.Property<string>
     axis_label: p.Property<string | null>
     axis_label_standoff: p.Property<number>
     major_label_standoff: p.Property<number>
@@ -568,8 +560,6 @@ export class Axis extends GuideRenderer {
       bounds:                  [ p.Any,      'auto'       ], // TODO (bev)
       ticker:                  [ p.Instance               ],
       formatter:               [ p.Instance               ],
-      x_range_name:            [ p.String,   'default'    ],
-      y_range_name:            [ p.String,   'default'    ],
       axis_label:              [ p.String,   ''           ],
       axis_label_standoff:     [ p.Int,      5            ],
       major_label_standoff:    [ p.Int,      5            ],

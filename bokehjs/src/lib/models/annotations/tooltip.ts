@@ -1,6 +1,6 @@
 import {Annotation, AnnotationView} from "./annotation"
-import {TooltipAttachment, Side} from "core/enums"
-import {div, display, undisplay, empty} from "core/dom"
+import {TooltipAttachment} from "core/enums"
+import {div, display, undisplay, empty, remove, classes} from "core/dom"
 import * as p from "core/properties"
 
 import {bk_tooltip, bk_tooltip_custom, bk_tooltip_arrow} from "styles/tooltips"
@@ -8,88 +8,91 @@ import {bk_left, bk_right, bk_above, bk_below} from "styles/mixins"
 
 import tooltips_css from "styles/tooltips.css"
 
-export function compute_side(attachment: TooltipAttachment, sx: number, sy: number, hcenter: number, vcenter: number): Side {
-  switch (attachment) {
-    case "horizontal":
-      return sx < hcenter ? "right" : "left"
-    case "vertical":
-      return sy < vcenter ? "below" : "above"
-    default:
-      return attachment
-  }
-}
+const arrow_size = 10  // XXX: keep in sync with less
 
 export class TooltipView extends AnnotationView {
   model: Tooltip
 
+  protected el: HTMLElement
+
   initialize(): void {
     super.initialize()
-    // TODO (bev) really probably need multiple divs
-    this.plot_view.canvas_view.add_overlay(this.el)
+    this.el = div({class: bk_tooltip})
     undisplay(this.el)
+    this.plot_view.canvas_view.add_overlay(this.el)
+  }
+
+  remove(): void {
+    remove(this.el)
+    super.remove()
   }
 
   connect_signals(): void {
     super.connect_signals()
-    this.connect(this.model.properties.data.change, () => this._draw_tips())
+    this.connect(this.model.properties.content.change, () => this.render())
+    this.connect(this.model.properties.position.change, () => this._reposition())
   }
 
   styles(): string[] {
     return [...super.styles(), tooltips_css]
   }
 
-  css_classes(): string[] {
-    return super.css_classes().concat(bk_tooltip)
-  }
-
   render(): void {
     if (!this.model.visible)
-      return
+      undisplay(this.el)
 
-    this._draw_tips()
+    super.render()
   }
 
-  protected _draw_tips(): void {
-    const {data} = this.model
-    empty(this.el)
-    undisplay(this.el)
-
-    if (this.model.custom)
-      this.el.classList.add(bk_tooltip_custom)
-    else
-      this.el.classList.remove(bk_tooltip_custom)
-
-    if (data.length == 0)
+  protected _render(): void {
+    const {content} = this.model
+    if (content == null) {
+      undisplay(this.el)
       return
-
-    const {frame} = this.plot_view
-
-    for (const [sx, sy, content] of data) {
-      if (this.model.inner_only && !frame.bbox.contains(sx, sy))
-        continue
-
-      const tip = div({}, content)
-      this.el.appendChild(tip)
     }
 
-    const [sx, sy] = data[data.length - 1] // XXX: this previously depended on {sx, sy} leaking from the for-loop
+    empty(this.el)
+    classes(this.el).toggle(bk_tooltip_custom, this.model.custom)
+    this.el.appendChild(content)
 
-    const side = compute_side(this.model.attachment, sx, sy, frame._hcenter.value, frame._vcenter.value)
+    if (this.model.show_arrow)
+      this.el.classList.add(bk_tooltip_arrow)
+  }
+
+  protected _reposition(): void {
+    const {position} = this.model
+    if (position == null) {
+      undisplay(this.el)
+      return
+    }
+
+    const [sx, sy] = position
+
+    const side = (() => {
+      const area = this.parent.layout.bbox.relativize()
+      const {attachment} = this.model
+      switch (attachment) {
+        case "horizontal":
+          return sx < area.hcenter ? "right" : "left"
+        case "vertical":
+          return sy < area.vcenter ? "below" : "above"
+        default:
+          return attachment
+      }
+    })()
 
     this.el.classList.remove(bk_right)
     this.el.classList.remove(bk_left)
     this.el.classList.remove(bk_above)
     this.el.classList.remove(bk_below)
 
-    const arrow_size = 10  // XXX: keep in sync with less
-
     display(this.el)  // XXX: {offset,client}Width() gives 0 when display="none"
 
     // slightly confusing: side "left" (for example) is relative to point that
     // is being annotated but CS class ".bk-left" is relative to the tooltip itself
     let top: number
-    let left = 0
-    let right = 0
+    let left: number | null = null
+    let right: number | null = null
 
     switch (side) {
       case "right":
@@ -114,18 +117,9 @@ export class TooltipView extends AnnotationView {
         break
     }
 
-    if (this.model.show_arrow)
-      this.el.classList.add(bk_tooltip_arrow)
-
-    // TODO (bev) this is not currently bulletproof. If there are
-    // two hits, not colocated and one is off the screen, that can
-    // be problematic
-    if (this.el.childNodes.length > 0) {
-      this.el.style.top = `${top}px`
-      this.el.style.left = left ? `${left}px` : 'auto'
-      this.el.style.right = right ? `${right}px` : 'auto'
-    } else
-      undisplay(this.el)
+    this.el.style.top = `${top}px`
+    this.el.style.left = left != null ? `${left}px` : "auto"
+    this.el.style.right = right != null ? `${right}px` : "auto"
   }
 }
 
@@ -136,7 +130,8 @@ export namespace Tooltip {
     attachment: p.Property<TooltipAttachment>
     inner_only: p.Property<boolean>
     show_arrow: p.Property<boolean>
-    data: p.Property<[number, number, HTMLElement][]>
+    position: p.Property<[number, number] | null>
+    content: p.Property<HTMLElement>
     custom: p.Property<boolean>
   }
 }
@@ -165,16 +160,13 @@ export class Tooltip extends Annotation {
     })
 
     this.internal({
-      data:   [ p.Any, [] ],
-      custom: [ p.Any     ],
+      position: [ p.Any, null        ],
+      content:  [ p.Any, () => div() ],
+      custom:   [ p.Any              ],
     })
   }
 
   clear(): void {
-    this.data = []
-  }
-
-  add(sx: number, sy: number, content: HTMLElement): void {
-    this.data = this.data.concat([[sx, sy, content]])
+    this.position = null
   }
 }

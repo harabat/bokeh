@@ -5,9 +5,9 @@ import {basename, dirname, join, relative} from "path"
 
 import * as transforms from "./transforms"
 import {Path} from "./sys"
+import {BuildError} from "./error"
 
 export type CompileConfig = {
-  log?: (message: string) => void
   out_dir?: OutDir
   bokehjs_dir?: Path
 }
@@ -105,7 +105,8 @@ export function default_transformers(options: ts.CompilerOptions): ts.CustomTran
         const module_file = join(base, module_path)
         if (ts.sys.fileExists(module_file) ||
             ts.sys.fileExists(module_file + ".ts") ||
-            ts.sys.fileExists(join(module_file, "index.ts"))) {
+            ts.sys.fileExists(join(module_file, "index.ts")) ||
+            options.outDir != null && ts.sys.fileExists(join(options.outDir, module_path + ".js"))) {
           const rel_path = normalize(relative(dirname(file), module_file))
           return rel_path.startsWith(".") ? rel_path : `./${rel_path}`
         }
@@ -155,7 +156,7 @@ export function read_tsconfig(tsconfig_path: Path, preconfigure?: ts.CompilerOpt
   return parse_tsconfig(tsconfig_file.config, dirname(tsconfig_path), preconfigure)
 }
 
-export function compile_project(tsconfig_path: Path, config: CompileConfig): TSOutput {
+function compile_project(tsconfig_path: Path, config: CompileConfig): TSOutput {
   const preconfigure: ts.CompilerOptions = (() => {
     const {out_dir} = config
     if (out_dir != null) {
@@ -179,15 +180,11 @@ export function compile_project(tsconfig_path: Path, config: CompileConfig): TSO
   return compile_files(files, options, transformers, host)
 }
 
-export function compile_typescript(tsconfig_path: Path, config: CompileConfig): boolean {
+export function compile_typescript(tsconfig_path: Path, config: CompileConfig = {}): void {
   const result = compile_project(tsconfig_path, config)
 
   if (is_failed(result)) {
-    const failure = report_diagnostics(result.diagnostics)
-    if (config.log != null)
-      config.log(`There were ${chalk.red("" + failure.count)} TypeScript errors:\n${failure.text}`)
-    return false
+    const {count, text} = report_diagnostics(result.diagnostics)
+    throw new BuildError("typescript", `There were ${chalk.red("" + count)} TypeScript errors:\n${text}`)
   }
-
-  return true
 }

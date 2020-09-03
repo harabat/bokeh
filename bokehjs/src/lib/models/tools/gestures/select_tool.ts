@@ -2,6 +2,7 @@ import {GestureTool, GestureToolView} from "./gesture_tool"
 import {GlyphRenderer} from "../../renderers/glyph_renderer"
 import {GraphRenderer} from "../../renderers/graph_renderer"
 import {DataRenderer} from "../../renderers/data_renderer"
+import {DataSource} from "../../sources/data_source"
 import {compute_renderers, RendererSpec} from "../util"
 import * as p from "core/properties"
 import {KeyEvent, UIEvent} from "core/ui_events"
@@ -28,22 +29,20 @@ export abstract class SelectToolView extends GestureToolView {
     return compute_renderers(renderers, all_renderers, names)
   }
 
-  _computed_renderers_by_data_source(): {[key: string]: DataRenderer[]} {
-    const renderers_by_source: {[key: string]: DataRenderer[]} = {}
+  _computed_renderers_by_data_source(): Map<DataSource, DataRenderer[]> {
+    const renderers_by_source: Map<DataSource, DataRenderer[]> = new Map()
 
     for (const r of this.computed_renderers) {
-      let source_id: string
+      let source: DataSource
       if (r instanceof GlyphRenderer)
-        source_id = r.data_source.id
+        source = r.data_source
       else if (r instanceof GraphRenderer)
-        source_id = r.node_renderer.data_source.id
+        source = r.node_renderer.data_source
       else
         continue
 
-      if (!(source_id in renderers_by_source))
-        renderers_by_source[source_id] = []
-
-      renderers_by_source[source_id].push(r)
+      const renderers = renderers_by_source.get(source) ?? []
+      renderers_by_source.set(source, [...renderers, r])
     }
 
     return renderers_by_source
@@ -80,14 +79,15 @@ export abstract class SelectToolView extends GestureToolView {
   _select(geometry: Geometry, final: boolean, mode: SelectionMode): void {
     const renderers_by_source = this._computed_renderers_by_data_source()
 
-    for (const id in renderers_by_source) {
-      const renderers = renderers_by_source[id]
+    for (const [, renderers] of renderers_by_source) {
       const sm = renderers[0].get_selection_manager()
 
       const r_views = []
       for (const r of renderers) {
-        if (r.id in this.plot_view.renderer_views)
-          r_views.push(this.plot_view.renderer_views[r.id])
+        const r_view = this.plot_view.renderer_views.get(r)
+        if (r_view != null) {
+          r_views.push(r_view)
+        }
       }
       sm.select(r_views, geometry, final, mode)
     }
@@ -100,37 +100,35 @@ export abstract class SelectToolView extends GestureToolView {
   }
 
   _emit_selection_event(geometry: Geometry, final: boolean = true): void {
-    const {frame} = this.plot_view
-    const xm = frame.xscales.default
-    const ym = frame.yscales.default
+    const {x_scale, y_scale} = this.plot_view.frame
 
     let geometry_data: GeometryData
     switch (geometry.type) {
       case "point": {
         const {sx, sy} = geometry
-        const x = xm.invert(sx)
-        const y = ym.invert(sy)
+        const x = x_scale.invert(sx)
+        const y = y_scale.invert(sy)
         geometry_data = {...geometry, x, y}
         break
       }
       case "span": {
         const {sx, sy} = geometry
-        const x = xm.invert(sx)
-        const y = ym.invert(sy)
+        const x = x_scale.invert(sx)
+        const y = y_scale.invert(sy)
         geometry_data = {...geometry, x, y}
         break
       }
       case "rect": {
         const {sx0, sx1, sy0, sy1} = geometry
-        const [x0, x1] = xm.r_invert(sx0, sx1)
-        const [y0, y1] = ym.r_invert(sy0, sy1)
+        const [x0, x1] = x_scale.r_invert(sx0, sx1)
+        const [y0, y1] = y_scale.r_invert(sy0, sy1)
         geometry_data = {...geometry, x0, y0, x1, y1}
         break
       }
       case "poly": {
         const {sx, sy} = geometry
-        const x = xm.v_invert(sx)
-        const y = ym.v_invert(sy)
+        const x = x_scale.v_invert(sx)
+        const y = y_scale.v_invert(sy)
         geometry_data = {...geometry, x, y}
         break
       }

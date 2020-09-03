@@ -1,4 +1,4 @@
-import {Program, VertexBuffer, IndexBuffer, Texture2D} from "@bokeh/gloo2"
+import {Program, VertexBuffer, IndexBuffer, Texture2d} from "./utils"
 import {BaseGLGlyph, Transform} from "./base"
 import {vertex_shader} from "./line.vert"
 import {fragment_shader} from "./line.frag"
@@ -7,34 +7,34 @@ import {color2rgba} from "core/util/color"
 
 class DashAtlas {
 
-  protected _atlas: {[key: string]: [number, number]} = {}
-  protected _index = 0
-  protected _width = 256
-  protected _height = 256
+  protected readonly _atlas: Map<string, [number, number]> = new Map()
+  protected readonly _width = 256
+  protected readonly _height = 256
 
-  tex: Texture2D
+  tex: Texture2d
 
   constructor(gl: WebGLRenderingContext) {
     // Init texture
-    this.tex = new Texture2D(gl)
+    this.tex = new Texture2d(gl)
     this.tex.set_wrapping(gl.REPEAT, gl.REPEAT)
     this.tex.set_interpolation(gl.NEAREST, gl.NEAREST)
-    this.tex.set_size([this._height, this._width], gl.RGBA)
-    this.tex.set_data([0, 0], [this._height, this._width], new Uint8Array(this._height * this._width * 4))
+    this.tex.set_size([this._width, this._height], gl.RGBA)
+    this.tex.set_data([0, 0], [this._width, this._height], new Uint8Array(4*this._width*this._height))
     // Init with solid line (index 0 is reserved for this)
     this.get_atlas_data([1])
   }
 
   get_atlas_data(pattern: number[]): [number, number] {
-    const key = pattern.join('-')
-    const findex_period = this._atlas[key]
-    if (findex_period === undefined) {
+    const key = pattern.join("-")
+    let atlas_data = this._atlas.get(key)
+    if (atlas_data == null) {
       const [data, period] = this.make_pattern(pattern)
-      this.tex.set_data([this._index, 0], [1, this._width], new Uint8Array(data.map((x) => x+10)))
-      this._atlas[key] = [this._index / this._height, period]
-      this._index += 1
+      const index = this._atlas.size
+      this.tex.set_data([0, index], [this._width, 1], new Uint8Array(data.map((x) => x + 10)))
+      atlas_data = [index/this._height, period]
+      this._atlas.set(key, atlas_data)
     }
-    return this._atlas[key]
+    return atlas_data
   }
 
   make_pattern(pattern: number[]): [Float32Array, number] {
@@ -98,7 +98,7 @@ const caps: {[key: string]: number} = {
   butt: 5, '|': 5,
 }
 
-export class LineGLGlyph extends BaseGLGlyph {
+export class LineGL extends BaseGLGlyph {
   readonly glyph: LineView
 
   protected prog: Program
@@ -152,10 +152,6 @@ export class LineGLGlyph extends BaseGLGlyph {
     const mainGlGlyph = mainGlyph.glglyph!
 
     if (mainGlGlyph.data_changed) {
-      if (!(isFinite(trans.dx) && isFinite(trans.dy))) {
-        return  // not sure why, but it happens on init sometimes (#4367)
-      }
-      mainGlGlyph._baked_offset = [trans.dx, trans.dy]  // float32 precision workaround; used in _bake() and below
       mainGlGlyph._set_data()
       mainGlGlyph.data_changed = false
     }
@@ -165,17 +161,8 @@ export class LineGLGlyph extends BaseGLGlyph {
       this.visuals_changed = false
     }
 
-    // Decompose x-y scale into scalar scale and aspect-vector.
-    let {sx, sy} = trans
-    const scale_length = Math.sqrt(sx*sx + sy*sy)
-    sx /= scale_length
-    sy /= scale_length
-
-    // Do we need to re-calculate segment data and cumsum?
-    if (Math.abs(this._scale_aspect - sy/sx) > Math.abs(1e-3 * this._scale_aspect)) {
-      mainGlGlyph._update_scale(sx, sy)
-      this._scale_aspect = sy / sx
-    }
+    mainGlGlyph._update_scale(1, 1)
+    this._scale_aspect = 1
 
     // Select buffers from main glyph
     // (which may be this glyph but maybe not if this is a (non)selection glyph)
@@ -189,12 +176,10 @@ export class LineGLGlyph extends BaseGLGlyph {
     this.prog.set_texture('u_dash_atlas', this.dash_atlas.tex)
 
     // Handle transformation to device coordinates
-    const baked_offset = mainGlGlyph._baked_offset
     this.prog.set_uniform('u_pixel_ratio', 'float', [trans.pixel_ratio])
     this.prog.set_uniform('u_canvas_size', 'vec2', [trans.width, trans.height])
-    this.prog.set_uniform('u_offset', 'vec2', [trans.dx - baked_offset[0], trans.dy - baked_offset[1]])
-    this.prog.set_uniform('u_scale_aspect', 'vec2', [sx, sy])
-    this.prog.set_uniform('u_scale_length', 'float', [scale_length])
+    this.prog.set_uniform('u_scale_aspect', 'vec2', [1, 1])
+    this.prog.set_uniform('u_scale_length', 'float', [Math.sqrt(2)])
 
     this.I_triangles = mainGlGlyph.I_triangles
     if (this.I_triangles.length < 65535) {
@@ -296,8 +281,8 @@ export class LineGLGlyph extends BaseGLGlyph {
     // Init array of implicit shape nx2
     let I, T, V_angles2, V_position2, V_tangents2, V_texcoord2, Vp, Vt
     const n = this.nvertices
-    const _x = new Float64Array(this.glyph._x)
-    const _y = new Float64Array(this.glyph._y)
+    const sx = this.glyph.sx
+    const sy = this.glyph.sy
 
     // Init vertex data
     const V_position = (Vp = new Float32Array(n*2))
@@ -307,8 +292,8 @@ export class LineGLGlyph extends BaseGLGlyph {
 
     // Position
     for (let i = 0, end = n; i < end; i++) {
-      V_position[(i*2)+0] = _x[i] + this._baked_offset[0]
-      V_position[(i*2)+1] = _y[i] + this._baked_offset[1]
+      V_position[(i*2)+0] = sx[i]
+      V_position[(i*2)+1] = sy[i]
     }
 
     // Tangents & norms (need tangents to calculate segments based on scale)
@@ -337,8 +322,10 @@ export class LineGLGlyph extends BaseGLGlyph {
     // Angles
     const A = new Float32Array(n)
     for (let i = 0, end = n; i < end; i++) {
-      A[i] = Math.atan2((Vt[(i*4)+0]*Vt[(i*4)+3]) - (Vt[(i*4)+1]*Vt[(i*4)+2]),
-                        (Vt[(i*4)+0]*Vt[(i*4)+2]) + (Vt[(i*4)+1]*Vt[(i*4)+3]))
+      A[i] = Math.atan2(
+        (Vt[(i*4)+0]*Vt[(i*4)+3]) - (Vt[(i*4)+1]*Vt[(i*4)+2]),
+        (Vt[(i*4)+0]*Vt[(i*4)+2]) + (Vt[(i*4)+1]*Vt[(i*4)+3]),
+      )
     }
     for (let i = 0, end = n-1; i < end; i++) {
       V_angles[(i*2)+0] = A[i]

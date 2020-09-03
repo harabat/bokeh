@@ -1,5 +1,5 @@
 import {ContinuousScale} from "./continuous_scale"
-import {Arrayable} from "core/types"
+import {Arrayable, NumberArray} from "core/types"
 import * as p from "core/properties"
 
 export namespace LinearScale {
@@ -17,11 +17,15 @@ export class LinearScale extends ContinuousScale {
     super(attrs)
   }
 
+  static init_LinearScale(): void {
+    this.internal({scan_result: [ p.Any ]})
+  }
+
   compute(x: number): number {
     return this._linear_compute(x)
   }
 
-  v_compute(xs: Arrayable<number>): Arrayable<number> {
+  v_compute(xs: Arrayable<number>): NumberArray {
     return this._linear_v_compute(xs)
   }
 
@@ -29,7 +33,7 @@ export class LinearScale extends ContinuousScale {
     return this._linear_invert(xprime)
   }
 
-  v_invert(xprimes: Arrayable<number>): Arrayable<number> {
+  v_invert(xprimes: Arrayable<number>): NumberArray {
     return this._linear_v_invert(xprimes)
   }
 }

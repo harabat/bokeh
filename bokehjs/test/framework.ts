@@ -21,6 +21,7 @@ export type Test = Decl & {
   view?: LayoutDOMView
   el?: HTMLElement
   threshold?: number
+  dpr?: number
 }
 
 export type Suite = {
@@ -50,6 +51,7 @@ type _It = ItFn & {
   skip: Fn
   with_server: Fn
   allowing: (threshold: number) => ItFn
+  dpr: (dpr: number) => ItFn
 }
 
 function _it(description: string, fn: Func | AsyncFunc, skip: boolean): Test {
@@ -66,6 +68,14 @@ export function allowing(threshold: number): ItFn {
   }
 }
 
+export function dpr(dpr: number): ItFn {
+  return (description: string, fn: Func | AsyncFunc): Test => {
+    const test = it(description, fn)
+    test.dpr = dpr
+    return test
+  }
+}
+
 export function skip(description: string, fn: Func | AsyncFunc): Test {
   return _it(description, fn, true)
 }
@@ -76,6 +86,7 @@ export const it: _It = ((description: string, fn: Func | AsyncFunc): Test => {
 it.skip = skip as any
 it.with_server = skip as any
 it.allowing = allowing
+it.dpr = dpr
 
 export function before_each(fn: Func | AsyncFunc): void {
   stack[0].before_each.push({fn})
@@ -241,12 +252,12 @@ async function _run_test(suites: Suite[], test: Test): Promise<PartialResult> {
   return {error, time}
 }
 
-export async function display<T extends LayoutDOM>(obj: T, viewport: [number, number] = [1000, 1000]): Promise<ViewOf<T>> {
+export async function display<T extends LayoutDOM>(obj: T, viewport: [number, number] = [1000, 1000]): Promise<{view: ViewOf<T>, el: HTMLElement}> {
   const [width, height] = viewport
   const el = div({style: {width: `${width}px`, height: `${height}px`, overflow: "hidden"}})
   document.body.appendChild(el)
   const view = await show(obj, el)
   current_test!.view = view
   current_test!.el = el
-  return view
+  return {view, el}
 }

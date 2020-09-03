@@ -49,8 +49,9 @@ export abstract class EditToolView extends GestureToolView {
     if (!frame.bbox.contains(sx, sy)) {
       return null
     }
-    const x = frame.xscales[renderer.x_range_name].invert(sx)
-    const y = frame.yscales[renderer.y_range_name].invert(sy)
+    const renderer_view = this.plot_view.renderer_views.get(renderer)!
+    const x = renderer_view.coordinates.x_scale.invert(sx)
+    const y = renderer_view.coordinates.y_scale.invert(sy)
     return [x, y]
   }
 
@@ -148,7 +149,7 @@ export abstract class EditToolView extends GestureToolView {
     for (const renderer of renderers) {
       const sm = renderer.get_selection_manager()
       const cds = renderer.data_source
-      const views = [this.plot_view.renderer_views[renderer.id]]
+      const views = [this.plot_view.renderer_views.get(renderer)!]
       const did_hit = sm.select(views, geometry, true, mode)
       if (did_hit) {
         selected.push(renderer)

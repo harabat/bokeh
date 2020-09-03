@@ -53,11 +53,11 @@ function encode(s: string): string {
 }
 
 type Suite = {description: string, suites: Suite[], tests: Test[]}
-type Test = {description: string, skip: boolean, threshold?: number}
+type Test = {description: string, skip: boolean, threshold?: number, dpr?: number}
 
 type Result = {error: {str: string, stack?: string} | null, time: number, state?: State, bbox?: Box}
 
-async function run_tests(): Promise<void> {
+async function run_tests(): Promise<boolean> {
   let client
   let failure = false
   let exception = false
@@ -161,12 +161,16 @@ async function run_tests(): Promise<void> {
       await Page.enable()
       await Log.enable()
 
-      await Emulation.setDeviceMetricsOverride({
-        width: 1000,
-        height: 1000,
-        deviceScaleFactor: 1,
-        mobile: false,
-      })
+      async function override_metrics(dpr: number = 1): Promise<void> {
+        await Emulation.setDeviceMetricsOverride({
+          width: 2000,
+          height: 4000,
+          deviceScaleFactor: dpr,
+          mobile: false,
+        })
+      }
+
+      override_metrics()
 
       const {errorText} = await Page.navigate({url})
 
@@ -322,7 +326,16 @@ async function run_tests(): Promise<void> {
             async function run_test(i: number | null, status: Status): Promise<boolean> {
               let may_retry = false
               const seq = JSON.stringify(to_seq(suites, test))
-              const output = await evaluate<Result>(`Tests.run(${seq})`)
+              const output = await (async () => {
+                if (test.dpr != null)
+                  override_metrics(test.dpr)
+                try {
+                  return await evaluate<Result>(`Tests.run(${seq})`)
+                } finally {
+                  if (test.dpr != null)
+                    override_metrics()
+                }
+              })()
               try {
                 const errors = entries.filter((entry) => entry.level == "error")
                 if (errors.length != 0) {
@@ -417,14 +430,18 @@ async function run_tests(): Promise<void> {
                   }
                 }
               } finally {
-                await evaluate(`Tests.clear(${seq})`)
+                const output = await evaluate(`Tests.clear(${seq})`)
+                if (output instanceof Failure) {
+                  status.errors.push(output.text)
+                  status.failure = true
+                }
               }
 
               return may_retry
             }
 
             const retry = await run_test(null, status)
-            if (retry) {
+            if (argv.retry && retry) {
               for (let i = 0; i < 10; i++) {
                 await run_test(i, status)
               }
@@ -502,8 +519,35 @@ async function run_tests(): Promise<void> {
     }
   }
 
-  if (failure)
+  return !failure
+}
+
+async function get_version(): Promise<{browser: string, protocol: string}> {
+  const version = await CDP.Version({port})
+  return {
+    browser: version.Browser,
+    protocol: version["Protocol-Version"],
+  }
+}
+
+const min_version = 83
+
+async function check_version(version: string): Promise<boolean> {
+  const match = version.match(/Chrome\/(?<major>\d+)\.(\d+)\.(\d+)\.(\d+)/)
+  const major = parseInt(match?.groups?.major ?? "0")
+  const ok = min_version <= major
+  if (!ok)
+    console.error(`${chalk.red("failed:")} ${version} is not supported, minimum supported version is ${chalk.magenta(min_version)}`)
+  return ok
+}
+
+async function main(): Promise<void> {
+  const {browser, protocol} = await get_version()
+  console.log(`Running in ${chalk.cyan(browser)} using devtools protocol ${chalk.cyan(protocol)}`)
+  const ok0 = await check_version(browser)
+  const ok1 = await run_tests()
+  if (!(ok0 && ok1))
     process.exit(1)
 }
 
-run_tests()
+main()

@@ -1,8 +1,8 @@
 import {XYGlyph, XYGlyphView, XYGlyphData} from "./xy_glyph"
-import {Arrayable, Rect} from "core/types"
+import {Arrayable, Rect, NumberArray} from "core/types"
 import {Anchor} from "core/enums"
 import * as p from "core/properties"
-import {map, min, max} from "core/util/arrayable"
+import {map, minmax} from "core/util/arrayable"
 import {Context2d} from "core/util/canvas"
 import {SpatialIndex} from "core/util/spatial"
 import {ImageLoader} from "core/util/image"
@@ -10,21 +10,21 @@ import {ImageLoader} from "core/util/image"
 export type CanvasImage = HTMLImageElement
 
 export interface ImageURLData extends XYGlyphData {
-  _url: Arrayable<string>
-  _angle: Arrayable<number>
-  _w: Arrayable<number>
-  _h: Arrayable<number>
+  _url: string[]
+  _angle: NumberArray
+  _w: NumberArray
+  _h: NumberArray
   _bounds_rect: Rect
 
-  sx: Arrayable<number>
-  sy: Arrayable<number>
-  sw: Arrayable<number>
-  sh: Arrayable<number>
+  sx: NumberArray
+  sy: NumberArray
+  sw: NumberArray
+  sh: NumberArray
 
   max_w: number
   max_h: number
 
-  image: Arrayable<CanvasImage | null>
+  image: (CanvasImage | null)[]
 }
 
 export interface ImageURLView extends ImageURLData {}
@@ -40,8 +40,13 @@ export class ImageURLView extends XYGlyphView {
     this.connect(this.model.properties.global_alpha.change, () => this.renderer.request_render())
   }
 
-  protected _index_data(): SpatialIndex {
-    return new SpatialIndex([])
+  protected _index_data(index: SpatialIndex): void {
+    const {data_size} = this
+
+    for (let i = 0; i < data_size; i++) {
+      // TODO: add a proper implementation (same as ImageBase?)
+      index.add_empty()
+    }
   }
 
   protected _set_data(): void {
@@ -71,28 +76,62 @@ export class ImageURLView extends XYGlyphView {
 
     const n = this._x.length
 
-    const xs = new Array<number>(w_data ? 2*n : n)
-    const ys = new Array<number>(h_data ? 2*n : n)
+    const xs = new NumberArray(w_data ? 2*n : n)
+    const ys = new NumberArray(h_data ? 2*n : n)
 
-    for (let i = 0; i < n; i++) {
-      xs[i] = this._x[i]
-      ys[i] = this._y[i]
+    const {anchor} = this.model
+
+    function x0x1(x: number, w: number): [number, number] {
+      switch (anchor) {
+        case "top_left":
+        case "bottom_left":
+        case "center_left":
+          return [x, x + w]
+        case "top_center":
+        case "bottom_center":
+        case "center":
+          return [x - w/2, x + w/2]
+        case "top_right":
+        case "bottom_right":
+        case "center_right":
+          return [x - w, x]
+      }
+    }
+
+    function y0y1(y: number, h: number): [number, number] {
+      switch (anchor) {
+        case "top_left":
+        case "top_center":
+        case "top_right":
+          return [y, y - h]
+        case "bottom_left":
+        case "bottom_center":
+        case "bottom_right":
+          return [y + h, y]
+        case "center_left":
+        case "center":
+        case "center_right":
+          return [y + h/2, y - h/2]
+      }
     }
 
     // if the width/height are in screen units, don't try to include them in bounds
     if (w_data) {
-      for (let i = 0; i < n; i++)
-        xs[n + i] = this._x[i] + this._w[i]
-    }
-    if (h_data) {
-      for (let i = 0; i < n; i++)
-        ys[n + i] = this._y[i] + this._h[i]
-    }
+      for (let i = 0; i < n; i++) {
+        [xs[i], xs[n + i]] = x0x1(this._x[i], this._w[i])
+      }
+    } else
+      xs.set(this._x, 0)
 
-    const x0 = min(xs)
-    const x1 = max(xs)
-    const y0 = min(ys)
-    const y1 = max(ys)
+    if (h_data) {
+      for (let i = 0; i < n; i++) {
+        [ys[i], ys[n + i]] = y0y1(this._y[i], this._h[i])
+      }
+    } else
+      ys.set(this._y, 0)
+
+    const [x0, x1] = minmax(xs)
+    const [y0, y1] = minmax(ys)
 
     this._bounds_rect = {x0, x1, y0, y1}
   }
@@ -136,8 +175,8 @@ export class ImageURLView extends XYGlyphView {
     // TODO (bev): take actual border width into account when clipping
     const {frame} = this.renderer.plot_view
     ctx.rect(
-      frame._left.value+1, frame._top.value+1,
-      frame._width.value-2, frame._height.value-2,
+      frame.bbox.left+1, frame.bbox.top+1,
+      frame.bbox.width-2, frame.bbox.height-2,
     )
     ctx.clip()
 

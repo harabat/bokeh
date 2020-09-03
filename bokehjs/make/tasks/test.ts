@@ -7,7 +7,7 @@ import assert from "assert"
 
 import which from "which"
 
-import {task, task2, log, success, BuildError} from "../task"
+import {task, task2, success, passthrough, BuildError} from "../task"
 import {Linker} from "@compiler/linker"
 import {default_prelude} from "@compiler/prelude"
 import {compile_typescript} from "@compiler/compiler"
@@ -41,7 +41,7 @@ async function is_available(port: number): Promise<boolean> {
       if (!failure)
         resolve(available)
       else
-        reject(new Error("timeout when searching for unused port"))
+        reject(new BuildError("net", "timeout when searching for unused port"))
     })
 
     socket.connect(port, host)
@@ -100,10 +100,7 @@ function mocha(files: string[]): Promise<void> {
 }
 
 task("test:codebase:compile", async () => {
-  const success = compile_typescript("./test/codebase/tsconfig.json", {log})
-
-  if (argv.emitError && !success)
-    process.exit(1)
+  compile_typescript("./test/codebase/tsconfig.json")
 })
 
 task("test:size", ["test:codebase:compile"], async () => {
@@ -297,10 +294,7 @@ const start = task2("test:start", [start_headless, start_server], async (devtool
 })
 
 function compile(name: string) {
-  const success = compile_typescript(`./test/${name}/tsconfig.json`, {log})
-
-  if (argv.emitError && !success)
-    process.exit(1)
+  compile_typescript(`./test/${name}/tsconfig.json`)
 }
 
 function bundle(name: string): void {
@@ -323,7 +317,7 @@ function bundle(name: string): void {
 }
 
 task("test:compile:unit", async () => compile("unit"))
-const unit_bundle = task("test:unit:bundle", ["test:compile:unit"], async () => bundle("unit"))
+const unit_bundle = task("test:unit:bundle", [passthrough("test:compile:unit")], async () => bundle("unit"))
 
 task2("test:unit", [start, unit_bundle], async ([devtools_port, server_port]) => {
   await devtools(devtools_port, server_port, "unit")
@@ -331,7 +325,7 @@ task2("test:unit", [start, unit_bundle], async ([devtools_port, server_port]) =>
 })
 
 task("test:compile:integration", async () => compile("integration"))
-const integration_bundle = task("test:integration:bundle", ["test:compile:integration"], async () => bundle("integration"))
+const integration_bundle = task("test:integration:bundle", [passthrough("test:compile:integration")], async () => bundle("integration"))
 
 task2("test:integration", [start, integration_bundle], async ([devtools_port, server_port]) => {
   await devtools(devtools_port, server_port, "integration", "test/baselines")
@@ -339,7 +333,7 @@ task2("test:integration", [start, integration_bundle], async ([devtools_port, se
 })
 
 task("test:defaults:compile", ["defaults:generate"], async () => compile("defaults"))
-const defaults_bundle = task("test:defaults:bundle", ["test:defaults:compile"], async () => bundle("defaults"))
+const defaults_bundle = task("test:defaults:bundle", [passthrough("test:defaults:compile")], async () => bundle("defaults"))
 
 task2("test:defaults", [start, defaults_bundle], async ([devtools_port, server_port]) => {
   await devtools(devtools_port, server_port, "defaults")

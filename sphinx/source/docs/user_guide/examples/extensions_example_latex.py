@@ -35,11 +35,8 @@ export class LatexLabelView extends LabelView {
 
     const panel = this.panel != null ? this.panel : this.plot_view.frame
 
-    const xscale = this.plot_view.frame.xscales[this.model.x_range_name]
-    const yscale = this.plot_view.frame.yscales[this.model.y_range_name]
-
-    let sx = this.model.x_units == "data" ? xscale.compute(this.model.x) : panel.xview.compute(this.model.x)
-    let sy = this.model.y_units == "data" ? yscale.compute(this.model.y) : panel.yview.compute(this.model.y)
+    let sx = this.model.x_units == "data" ? this.coordinates.x_scale.compute(this.model.x) : panel.xview.compute(this.model.x)
+    let sy = this.model.y_units == "data" ? this.coordinates.y_scale.compute(this.model.y) : panel.yview.compute(this.model.y)
 
     sx += this.model.x_offset
     sy -= this.model.y_offset
@@ -100,10 +97,16 @@ p = figure(title="LaTex Demonstration", plot_width=500, plot_height=500)
 p.line(x, y)
 
 # Note: must set ``render_mode="css"``
-latex = LatexLabel(text="f = \sum_{n=1}^\infty\\frac{-e^{i\pi}}{2^n}!",
-                   x=40, y=420, x_units='screen', y_units='screen',
-                   render_mode='css', text_font_size='21px',
-                   background_fill_alpha=0)
+latex = LatexLabel(
+    text="f = \\sum_{n=1}^\\infty\\frac{-e^{i\\pi}}{2^n}!",
+    x=40,
+    y=420,
+    x_units="screen",
+    y_units="screen",
+    render_mode="css",
+    text_font_size="21px",
+    background_fill_alpha=0,
+)
 
 p.add_layout(latex)
 

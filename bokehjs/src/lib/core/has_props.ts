@@ -1,19 +1,25 @@
 //import {logger} from "./logging"
 import {View} from "./view"
 import {Class} from "./class"
-import {Attrs} from "./types"
+import {Arrayable, Attrs} from "./types"
 import {Signal0, Signal, Signalable, ISignalable} from "./signaling"
 import {Struct, Ref, is_ref} from "./util/refs"
 import * as p from "./properties"
+import * as k from "./kinds"
 import * as mixins from "./property_mixins"
 import {Property} from "./properties"
 import {uniqueId} from "./util/string"
 import {max, copy} from "./util/array"
-import {clone, extend, isEmpty} from "./util/object"
-import {isPlainObject, isObject, isArray, isString, isFunction} from "./util/types"
+import {values, entries, clone, extend} from "./util/object"
+import {isPlainObject, isObject, isArray, isTypedArray, isString, isFunction} from "./util/types"
 import {isEqual} from './util/eq'
 import {ColumnarDataSource} from "models/sources/columnar_data_source"
 import {Document, DocumentEvent, DocumentEventBatch, ModelChangedEvent} from "../document"
+import {is_NDArray} from "./util/ndarray"
+import {encode_NDArray} from "./util/serialization"
+import {equals, Equals, Comparator} from "./util/eq"
+import {pretty, Printable, Printer} from "./util/pretty"
+import * as kinds from "./kinds"
 
 export module HasProps {
   export type Attrs = p.AttrsOf<Props>
@@ -42,9 +48,9 @@ export interface HasProps extends HasProps.Attrs, ISignalable {
   id: string
 }
 
-export type PropertyGenerator = Generator<Property, void>
+export type PropertyGenerator = Generator<Property, void, undefined>
 
-export abstract class HasProps extends Signalable() {
+export abstract class HasProps extends Signalable() implements Equals, Printable {
   __view_type__: View
 
   // XXX: setter is only required for backwards compatibility
@@ -63,6 +69,10 @@ export abstract class HasProps extends Signalable() {
   static get __qualified__(): string {
     const {__module__, __name__} = this
     return __module__ != null ? `${__module__}.${__name__}` : __name__
+  }
+
+  static get [Symbol.toStringTag](): string {
+    return this.__name__
   }
 
   static init_HasProps(): void {
@@ -92,22 +102,19 @@ export abstract class HasProps extends Signalable() {
       return undefined
     else if (isFunction(default_value))
       return default_value
+    else if (isArray(default_value))
+      return () => copy(default_value)
+    else if (isPlainObject(default_value))
+      return () => clone(default_value)
     else if (!isObject(default_value))
       return () => default_value
-    else {
-      //logger.warn(`${this.prototype.type}.${attr} uses unwrapped non-primitive default value`)
-
-      if (isArray(default_value))
-        return () => copy(default_value)
-      else
-        return () => clone(default_value)
-    }
+    else
+      throw new Error(`${default_value} must be explicitly wrapped in a function`)
   }
 
   // TODO: don't use Partial<>, but exclude inherited properties
-  static define<T>(obj: Partial<p.DefineOf<T>>): void {
-    for (const name in obj) {
-      const prop = obj[name]
+  static define<T>(obj: Partial<p.DefineOf<T>> | ((types: typeof kinds) => Partial<p.DefineOf<T>>)): void {
+    for (const [name, prop] of entries(isFunction(obj) ? obj(kinds) : obj)) {
       if (this.prototype._props[name] != null)
         throw new Error(`attempted to redefine property '${this.prototype.type}.${name}'`)
 
@@ -143,8 +150,8 @@ export abstract class HasProps extends Signalable() {
 
   static internal(obj: any): void {
     const _object: any = {}
-    for (const name in obj) {
-      const [type, default_value, options = {}] = obj[name]
+    for (const [name, entry] of entries(obj)) {
+      const [type, default_value, options = {}] = entry as any
       _object[name] = [type, default_value, {...options, internal: true}]
     }
     this.define(_object)
@@ -167,8 +174,7 @@ export abstract class HasProps extends Signalable() {
 
     function rename(prefix: string, mixin: Attrs): Attrs {
       const result: Attrs = {}
-      for (const name in mixin) {
-        const prop = mixin[name]
+      for (const [name, prop] of entries(mixin)) {
         result[prefix + name] = prop
       }
       return result
@@ -205,8 +211,8 @@ export abstract class HasProps extends Signalable() {
   }
 
   static override(obj: any): void {
-    for (const name in obj) {
-      const default_value = this._fix_default(obj[name], name)
+    for (const [name, prop] of entries(obj)) {
+      const default_value = this._fix_default(prop, name)
       const value = this.prototype._props[name]
       if (value == null)
         throw new Error(`attempted to override nonexistent '${this.prototype.type}.${name}'`)
@@ -246,17 +252,44 @@ export abstract class HasProps extends Signalable() {
     return attrs
   }
 
+  [equals](that: this, cmp: Comparator): boolean {
+    for (const p0 of this) {
+      const p1 = that.property(p0.attr)
+      if (cmp.eq(p0.get_value(), p1.get_value()))
+        return false
+    }
+    return true
+  }
+
+  [pretty](printer: Printer): string {
+    const T = printer.token
+
+    const items = []
+    for (const prop of this) {
+      if (prop.dirty) {
+        const value = prop.get_value()
+        items.push(`${prop.attr}${T(":")} ${printer.to_string(value)}`)
+      }
+    }
+
+    const cls = this.constructor.__qualified__
+    return `${cls}${T("(")}${T("{")}${items.join(`${T(",")} `)}${T("}")}${T(")")}`
+  }
+
   constructor(attrs: Attrs | Map<string, unknown> = {}) {
     super()
 
     const get = attrs instanceof Map ? attrs.get : (name: string) => attrs[name]
 
-    for (const name in this._props) {
-      const {type, default_value, options} = this._props[name]
-      if (type != null)
-        this.properties[name] = new type(this, name, default_value, get(name), options)
+    for (const [name, {type, default_value, options}] of entries(this._props)) {
+      let property: p.Property<unknown>
+
+      if (type instanceof k.Kind)
+        property = new p.PrimitiveProperty(this, name, type, default_value, get(name), options)
       else
-        throw new Error(`undefined property type for ${this.type}.${name}`)
+        property = new type(this, name, k.Any, default_value, get(name), options)
+
+      this.properties[name] = property
     }
 
     // allowing us to defer initialization when loading many models
@@ -269,8 +302,7 @@ export abstract class HasProps extends Signalable() {
   }
 
   finalize(): void {
-    for (const name in this.properties) {
-      const prop = this.properties[name]
+    for (const prop of this) {
       if (prop.spec.transform != null)
         this.connect(prop.spec.transform.change, () => this.transformchange.emit())
     }
@@ -305,7 +337,6 @@ export abstract class HasProps extends Signalable() {
   private _setv(changes: Map<Property, unknown>, options: HasProps.SetOptions): void {
     // Extract attributes and options.
     const check_eq   = options.check_eq
-    const silent     = options.silent
     const changed    = []
     const changing   = this._changing
     this._changing = true
@@ -318,19 +349,17 @@ export abstract class HasProps extends Signalable() {
     }
 
     // Trigger all relevant attribute changes.
-    if (!silent) {
-      if (changed.length > 0)
-        this._pending = true
-      for (const prop of changed) {
-        prop.change.emit()
-      }
+    if (changed.length > 0)
+      this._pending = true
+    for (const prop of changed) {
+      prop.change.emit()
     }
 
     // You might be wondering why there's a `while` loop here. Changes can
     // be recursively nested within `"change"` events.
     if (changing)
       return
-    if (!silent && !options.no_change) {
+    if (!options.no_change) {
       while (this._pending) {
         this._pending = false
         this.change.emit()
@@ -341,22 +370,24 @@ export abstract class HasProps extends Signalable() {
     this._changing = false
   }
 
-  setv(changes: Attrs, options: HasProps.SetOptions = {}): void {
-    if (isEmpty(changes))
+  setv(changed_attrs: Attrs, options: HasProps.SetOptions = {}): void {
+    const changes = entries(changed_attrs)
+
+    if (changes.length == 0)
       return
+
+    if (options.silent === true) {
+      for (const [attr, value] of changes) {
+        this.properties[attr].set_value(value)
+      }
+      return
+    }
 
     const changed = new Map<Property, unknown>()
     const previous = new Map<Property, unknown>()
 
-    for (const attr in changes) {
-      if (!changes.hasOwnProperty(attr))
-        continue
-
+    for (const [attr, value] of changes) {
       const prop = this.properties[attr]
-      if (prop == null)
-        throw new Error(`property ${this.type}.${attr} wasn't declared`)
-
-      const value = changes[attr]
       changed.set(prop, value)
       previous.set(prop, prop.get_value())
     }
@@ -377,9 +408,7 @@ export abstract class HasProps extends Signalable() {
         }
       }
 
-      if (options.silent !== true) {
-        this._push_changes(changed, options)
-      }
+      this._push_changes(changed, options)
     }
   }
 
@@ -411,9 +440,7 @@ export abstract class HasProps extends Signalable() {
   }
 
   *[Symbol.iterator](): PropertyGenerator {
-    for (const name in this.properties) {
-      yield this.properties[name]
-    }
+    yield* values(this.properties)
   }
 
   *syncable_properties(): PropertyGenerator {
@@ -423,21 +450,32 @@ export abstract class HasProps extends Signalable() {
     }
   }
 
-  static _value_to_json(_key: string, value: unknown, _optional_parent_object: any): unknown {
+  /** @deprecated */
+  serializable_attributes(): Attrs {
+    const attrs: Attrs = {}
+    for (const prop of this.syncable_properties()) {
+      attrs[prop.attr] = prop.get_value()
+    }
+    return attrs
+  }
+
+  static _value_to_json(value: unknown): unknown {
     if (value instanceof HasProps)
       return value.ref()
-    else if (isArray(value)) {
-      const ref_array: unknown[] = []
-      for (let i = 0; i < value.length; i++) {
+    else if (is_NDArray(value))
+      return encode_NDArray(value)
+    else if (isArray(value) || isTypedArray(value)) {
+      const n = value.length
+      const ref_array: unknown[] = new Array(n)
+      for (let i = 0; i < n; i++) {
         const v = value[i]
-        ref_array.push(HasProps._value_to_json(i.toString(), v, value))
+        ref_array[i] = HasProps._value_to_json(v)
       }
       return ref_array
     } else if (isPlainObject(value)) {
       const ref_obj: Attrs = {}
-      for (const subkey in value) {
-        if (value.hasOwnProperty(subkey))
-          ref_obj[subkey] = HasProps._value_to_json(subkey, value[subkey], value)
+      for (const [subkey, subvalue] of entries(value)) {
+        ref_obj[subkey] = HasProps._value_to_json(subvalue)
       }
       return ref_obj
     } else
@@ -450,7 +488,7 @@ export abstract class HasProps extends Signalable() {
     const attributes: Attrs = {} // Object.create(null)
     for (const prop of this) {
       if (prop.syncable && (include_defaults || prop.dirty)) {
-        attributes[prop.attr] = value_to_json(prop.attr, prop.get_value(), this)
+        attributes[prop.attr] = value_to_json(prop.get_value())
       }
     }
     return attributes
@@ -458,7 +496,7 @@ export abstract class HasProps extends Signalable() {
 
   // this is like _value_record_references but expects to find refs
   // instead of models, and takes a doc to look up the refs in
-  static _json_record_references(doc: Document, v: any, refs: Set<HasProps>, options: {recursive: boolean}): void {
+  static _json_record_references(doc: Document, v: unknown, refs: Set<HasProps>, options: {recursive: boolean}): void {
     const {recursive} = options
     if (is_ref(v)) {
       const model = doc.get_model_by_id(v.id)
@@ -469,11 +507,8 @@ export abstract class HasProps extends Signalable() {
       for (const elem of v)
         HasProps._json_record_references(doc, elem, refs, {recursive})
     } else if (isPlainObject(v)) {
-      for (const k in v) {
-        if (v.hasOwnProperty(k)) {
-          const elem = v[k]
-          HasProps._json_record_references(doc, elem, refs, {recursive})
-        }
+      for (const elem of values(v)) {
+        HasProps._json_record_references(doc, elem, refs, {recursive})
       }
     }
   }
@@ -496,33 +531,31 @@ export abstract class HasProps extends Signalable() {
       for (const elem of v)
         HasProps._value_record_references(elem, refs, {recursive})
     } else if (isPlainObject(v)) {
-      for (const k in v) {
-        if (v.hasOwnProperty(k)) {
-          const elem = v[k]
-          HasProps._value_record_references(elem, refs, {recursive})
-        }
+      for (const elem of values(v)) {
+        HasProps._value_record_references(elem, refs, {recursive})
       }
     }
   }
 
   // Get models that are immediately referenced by our properties
   // (do not recurse, do not include ourselves)
-  protected _immediate_references(): HasProps[] {
+  protected _immediate_references(): Set<HasProps> {
     const refs = new Set<HasProps>()
     for (const prop of this.syncable_properties()) {
       const value = prop.get_value()
       HasProps._value_record_references(value, refs, {recursive: false})
     }
-    return [...refs.values()]
+    return refs
   }
 
-  references(): HasProps[] {
+  references(): Set<HasProps> {
     const refs = new Set<HasProps>()
     HasProps._value_record_references(this, refs, {recursive: true})
-    return [...refs.values()]
+    return refs
   }
 
   protected _doc_attached(): void {}
+  protected _doc_detached(): void {}
 
   attach_document(doc: Document): void {
     // This should only be called by the Document implementation to set the document field
@@ -535,6 +568,7 @@ export abstract class HasProps extends Signalable() {
 
   detach_document(): void {
     // This should only be called by the Document implementation to unset the document field
+    this._doc_detached()
     this.document = null
   }
 
@@ -581,9 +615,9 @@ export abstract class HasProps extends Signalable() {
     }
   }
 
-  materialize_dataspecs(source: ColumnarDataSource): {[key: string]: unknown[] | number} {
+  materialize_dataspecs(source: ColumnarDataSource): {[key: string]: Arrayable<unknown> | number} {
     // Note: this should be moved to a function separate from HasProps
-    const data: {[key: string]: unknown[] | number} = {}
+    const data: {[key: string]: Arrayable<unknown> | number} = {}
     for (const prop of this) {
       if (!(prop instanceof p.VectorSpec))
         continue
@@ -595,13 +629,15 @@ export abstract class HasProps extends Signalable() {
       const array = prop.array(source)
 
       data[`_${name}`] = array
-      // the shapes are indexed by the column name, but when we materialize the dataspec, we should
-      // store under the canonical field name, e.g. _image_shape, even if the column name is "foo"
-      if (prop.spec.field != null && prop.spec.field in source._shapes)
-        data[`_${name}_shape`] = source._shapes[prop.spec.field]
       if (prop instanceof p.DistanceSpec)
-        data[`max_${name}`] = max(array)
+        data[`max_${name}`] = max(array as Arrayable<number>)
     }
     return data
+  }
+
+  on_change(properties: Property<unknown> | Property<unknown>[], fn: () => void): void {
+    for (const property of isArray(properties) ? properties : [properties]) {
+      this.connect(property.change, fn)
+    }
   }
 }

@@ -1,20 +1,20 @@
 import {PointGeometry} from 'core/geometry'
-import {Arrayable} from "core/types"
+import {Arrayable, NumberArray} from "core/types"
 import {Area, AreaView, AreaData} from "./area"
 import {Context2d} from "core/util/canvas"
-import {SpatialIndex, IndexedRect} from "core/util/spatial"
+import {SpatialIndex} from "core/util/spatial"
 import * as hittest from "core/hittest"
 import * as p from "core/properties"
 import {Selection} from "../selections/selection"
 
 export interface VAreaData extends AreaData {
-  _x: Arrayable<number>
-  _y1: Arrayable<number>
-  _y2: Arrayable<number>
+  _x: NumberArray
+  _y1: NumberArray
+  _y2: NumberArray
 
-  sx: Arrayable<number>
-  sy1: Arrayable<number>
-  sy2: Arrayable<number>
+  sx: NumberArray
+  sy1: NumberArray
+  sy2: NumberArray
 }
 
 export interface VAreaView extends VAreaData {}
@@ -23,21 +23,20 @@ export class VAreaView extends AreaView {
   model: VArea
   visuals: VArea.Visuals
 
-  protected _index_data(): SpatialIndex {
-    const points: IndexedRect[] = []
+  protected _index_data(index: SpatialIndex): void {
+    const {min, max} = Math
+    const {data_size} = this
 
-    for (let i = 0, end = this._x.length; i < end; i++) {
+    for (let i = 0; i < data_size; i++) {
       const x = this._x[i]
       const y1 = this._y1[i]
       const y2 = this._y2[i]
 
       if (isNaN(x + y1 + y2) || !isFinite(x + y1 + y2))
-        continue
-
-      points.push({x0: x, y0: Math.min(y1, y2), x1: x, y1: Math.max(y1, y2), i})
+        index.add_empty()
+      else
+        index.add(x, min(y1, y2), x, max(y1, y2))
     }
-
-    return new SpatialIndex(points)
   }
 
   protected _inner(ctx: Context2d, sx: Arrayable<number>, sy1: Arrayable<number>, sy2: Arrayable<number>, func: (this: Context2d) => void): void {
@@ -64,18 +63,16 @@ export class VAreaView extends AreaView {
 
   }
 
-  scenterx(i: number): number {
-    return this.sx[i]
-  }
-
-  scentery(i: number): number {
-    return (this.sy1[i] + this.sy2[i])/2
+  scenterxy(i: number): [number, number] {
+    const scx = this.sx[i]
+    const scy = (this.sy1[i] + this.sy2[i])/2
+    return [scx, scy]
   }
 
   protected _hit_point(geometry: PointGeometry): Selection {
     const L = this.sx.length
-    const sx = new Float64Array(2*L)
-    const sy = new Float64Array(2*L)
+    const sx = new NumberArray(2*L)
+    const sy = new NumberArray(2*L)
 
     for (let i = 0, end = L; i < end; i++) {
       sx[i] = this.sx[i]
@@ -88,7 +85,7 @@ export class VAreaView extends AreaView {
 
     if (hittest.point_in_poly(geometry.sx, geometry.sy, sx, sy)) {
       result.add_to_selected_glyphs(this.model)
-      result.get_view = () => this
+      result.view = this
     }
 
     return result
@@ -127,9 +124,9 @@ export class VArea extends Area {
     this.prototype.default_view = VAreaView
 
     this.define<VArea.Props>({
-      x:  [ p.CoordinateSpec ],
-      y1: [ p.CoordinateSpec ],
-      y2: [ p.CoordinateSpec ],
+      x:  [ p.XCoordinateSpec, {field: "x"}  ],
+      y1: [ p.YCoordinateSpec, {field: "y1"} ],
+      y2: [ p.YCoordinateSpec, {field: "y2"} ],
     })
   }
 }

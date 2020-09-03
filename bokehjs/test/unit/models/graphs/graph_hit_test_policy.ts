@@ -1,4 +1,4 @@
-import {expect} from "chai"
+import {expect} from "assertions"
 import * as sinon from "sinon"
 
 import {Selection} from "@bokehjs/models/selections/selection"
@@ -15,15 +15,19 @@ import {ColumnarDataSource} from "@bokehjs/models/sources/columnar_data_source"
 import {ColumnDataSource} from "@bokehjs/models/sources/column_data_source"
 import {Document} from "@bokehjs/document"
 import {build_view} from "@bokehjs/core/build_views"
+import {Arrayable, NumberArray} from "@bokehjs/core/types"
+import {repeat} from "@bokehjs/core/util/array"
 
 class TrivialLayoutProvider extends LayoutProvider {
 
-  get_node_coordinates(_graph_source: ColumnarDataSource): [number[], number[]] {
-    return [[], []]
+  get_node_coordinates(graph_source: ColumnarDataSource): [NumberArray, NumberArray] {
+    const n = graph_source.get_length() ?? 1
+    return [new NumberArray(n), new NumberArray(n)]
   }
 
-  get_edge_coordinates(_graph_source: ColumnarDataSource): [[number, number][], [number, number][]] {
-    return [[], []]
+  get_edge_coordinates(graph_source: ColumnarDataSource): [Arrayable<number>[], Arrayable<number>[]] {
+    const n = graph_source.get_length() ?? 1
+    return [repeat([], n), repeat([], n)]
   }
 }
 
@@ -54,10 +58,12 @@ describe("GraphHitTestPolicy", () => {
       data: {
         start: [10, 10, 30],
         end: [20, 30, 20],
+        xs: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+        ys: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
       },
     })
-    const node_renderer = new GlyphRenderer({data_source: node_source, glyph: new Circle()})
-    const edge_renderer = new GlyphRenderer({data_source: edge_source, glyph: new MultiLine()})
+    const node_renderer = new GlyphRenderer({data_source: node_source, glyph: new Circle()}) as GlyphRenderer & {glyph: Circle}
+    const edge_renderer = new GlyphRenderer({data_source: edge_source, glyph: new MultiLine()}) as GlyphRenderer & {glyph: MultiLine}
 
     gr = new GraphRenderer({
       node_renderer,
@@ -90,8 +96,8 @@ describe("GraphHitTestPolicy", () => {
         node_stub.returns(new Selection({indices: [1, 2, 3]}))
         const policy = new NodesOnly()
         const result = policy.hit_test({type: "point", sx: 0, sy: 0}, gv)
-        expect(result).to.be.not.null
-        expect(result!.indices).to.be.deep.equal([1, 2, 3])
+        expect(result).to.not.be.null
+        expect(result!.indices).to.be.equal([1, 2, 3])
       })
     })
 
@@ -172,7 +178,7 @@ describe("GraphHitTestPolicy", () => {
 
         policy.do_selection(hit_test_result, gr, true, "replace")
 
-        expect(edge_source.selected.multiline_indices).to.be.deep.equal({ 0: [ 0 ], 1: [ 0 ] })
+        expect(edge_source.selected.multiline_indices).to.be.equal({ 0: [ 0 ], 1: [ 0 ] })
       })
     })
 
@@ -198,7 +204,7 @@ describe("GraphHitTestPolicy", () => {
         const did_hit = policy.do_inspection(hit_test_result, {type: "point", sx: 0, sy: 0}, gv, true, "replace")
 
         expect(did_hit).to.be.true
-        expect(edge_source.inspected.multiline_indices).to.be.deep.equal({ 0: [ 0 ], 1: [ 0 ] })
+        expect(edge_source.inspected.multiline_indices).to.be.equal({ 0: [ 0 ], 1: [ 0 ] })
       })
     })
   })
@@ -226,7 +232,7 @@ describe("GraphHitTestPolicy", () => {
         const policy = new EdgesAndLinkedNodes()
         policy.do_selection(hit_test_result, gr, true, "replace")
 
-        expect(node_source.selected.indices).to.be.deep.equal([0, 2])
+        expect(node_source.selected.indices).to.be.equal([0, 2])
       })
     })
 
@@ -252,7 +258,7 @@ describe("GraphHitTestPolicy", () => {
         const did_hit = policy.do_inspection(hit_test_result, {type: "point", sx: 0, sy: 0}, gv, true, "replace")
 
         expect(did_hit).to.be.true
-        expect(node_source.inspected.indices).to.be.deep.equal([0, 2])
+        expect(node_source.inspected.indices).to.be.equal([0, 2])
       })
     })
   })

@@ -2,7 +2,7 @@ import {XYGlyph, XYGlyphView, XYGlyphData} from "./xy_glyph"
 import {TextVector} from "core/property_mixins"
 import {PointGeometry} from "core/geometry"
 import * as hittest from "core/hittest"
-import {Arrayable} from "core/types"
+import {NumberArray} from "core/types"
 import * as visuals from "core/visuals"
 import * as p from "core/properties"
 import {measure_font} from "core/util/text"
@@ -11,10 +11,10 @@ import {assert} from "core/util/assert"
 import {Selection} from "../selections/selection"
 
 export interface TextData extends XYGlyphData {
-  _text: Arrayable<string>
-  _angle: Arrayable<number>
-  _x_offset: Arrayable<number>
-  _y_offset: Arrayable<number>
+  _text: string[]
+  _angle: NumberArray
+  _x_offset: NumberArray
+  _y_offset: NumberArray
 
   _sxs: number[][][]
   _sys: number[][][]
@@ -128,7 +128,7 @@ export class TextView extends XYGlyphView {
     return new Selection({indices})
   }
 
-  private _scenterxy(i: number): {x: number, y: number} {
+  scenterxy(i: number): [number, number] {
     const sxs = this._sxs[i]
     const sys = this._sys[i]
     assert(sxs.length != 0 && sys.length != 0)
@@ -137,15 +137,7 @@ export class TextView extends XYGlyphView {
     const sxc = (sxs[0][2] + sx0) / 2
     const syc = (sys[0][2] + sy0) / 2
     const [sxcr, sycr] = this._rotate_point(sxc, syc, sx0, sy0, this._angle[i])
-    return {x: sxcr, y:sycr}
-  }
-
-  scenterx(i: number): number {
-    return this._scenterxy(i).x
-  }
-
-  scentery(i: number): number {
-    return this._scenterxy(i).y
+    return [sxcr, sycr]
   }
 }
 

@@ -73,8 +73,8 @@ class UnitsSpecModel(Model):
 
 logging.basicConfig(level=logging.DEBUG)
 
-class TestClientServer(object):
 
+class TestClientServer:
     def test_minimal_connect_and_disconnect(self, ManagedServerLoop) -> None:
         application = Application()
         with ManagedServerLoop(application) as server:
@@ -164,6 +164,10 @@ class TestClientServer(object):
 
     async def test_allow_websocket_origin(self, ManagedServerLoop) -> None:
         application = Application()
+
+        # allow good local origin with random port
+        with ManagedServerLoop(application, port=0) as server:
+            await self.check_http_ok_socket_ok(server, origin="http://localhost:%s" % server.port)
 
         # allow good origin
         with ManagedServerLoop(application, allow_websocket_origin=["example.com"]) as server:
@@ -283,6 +287,14 @@ class TestClientServer(object):
             client_session.close()
             client_session._loop_until_closed()
             assert not client_session.connected
+
+    def test__check_error_404(self, ManagedServerLoop) -> None:
+        application = Application()
+        with ManagedServerLoop(application) as server:
+            with pytest.raises(IOError):
+                pull_session(session_id='test__check_error_404',
+                                              url=url(server) + 'file_not_found',
+                                              io_loop=server.io_loop)
 
     def test_request_server_info(self, ManagedServerLoop) -> None:
         application = Application()
@@ -984,7 +996,6 @@ def test_unit_spec_changes_do_not_boomerang(monkeypatch, ManagedServerLoop) -> N
         client_session._loop_until_closed()
         assert not client_session.connected
         server.unlisten() # clean up so next test can run
-
 
 @patch('bokeh.client.session.show_session')
 def test_session_show_adds_obj_to_curdoc_if_necessary(m) -> None:
